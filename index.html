@@ -11,7 +11,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Netflix-Katalog DE & HU</title>
+<title>Streaming-Katalog DE & HU</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎞️</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -68,6 +68,17 @@ main{max-width:760px;margin:0 auto;padding:6px 8px 40px}
 .flags{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
 .flag{font-size:13px;border-radius:6px;padding:2px 7px;border:1px solid var(--line);background:var(--surface)}
 .flag.off{color:#C0392B;text-decoration:line-through;background:none;border-color:#C0392B}
+/* szolgáltató-logók a zászló mellett; a már nem elérhető logó szürke és halvány */
+.flag img{width:18px;height:18px;border-radius:4px;vertical-align:-4px;margin-left:4px}
+.flag img.off{filter:grayscale(1);opacity:.35}
+.flag .svct{font-size:11px;font-weight:600;margin-left:4px}
+.flag .svct.off{opacity:.4}
+/* szolgáltató-kapcsolók a szűrősávban */
+.svcbar{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.svc{font:inherit;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:4px;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:10px;padding:7px 2px;cursor:pointer}
+.svc img{width:28px;height:28px;border-radius:6px;filter:grayscale(1);opacity:.45}
+.svc[aria-pressed=true]{border:2px solid var(--ink);color:var(--ink);font-weight:600;padding:6px 1px}
+.svc[aria-pressed=true] img{filter:none;opacity:1}
 .flag.off::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#C0392B;margin-right:5px;vertical-align:middle;text-decoration:none}
 .scores{display:grid;gap:4px;justify-items:end;text-align:right}
 .imdb{font-size:26px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
@@ -78,7 +89,6 @@ main{max-width:760px;margin:0 auto;padding:6px 8px 40px}
 .pw{position:relative;display:block;width:54px}
 .tick{position:absolute;right:-5px;top:-5px;width:20px;height:20px;border-radius:50%;background:#2E9E5B;color:#fff;font-size:12px;line-height:20px;text-align:center;border:2px solid var(--bg)}
 .film.watched .title{color:var(--muted)}
-.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#D64545;vertical-align:1px;margin-right:2px}
 .film a{color:inherit;text-decoration:none}
 .tools{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 10px}
 .tools button,.tools label{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 10px;cursor:pointer}
@@ -131,6 +141,7 @@ footer a{color:inherit}
       <button data-c="HU" aria-pressed="false">🇭🇺 HU</button>
       <button data-c="BOTH" aria-pressed="false" data-i="both"></button>
     </div>
+    <div class="svcbar full" id="svcBar" role="group" aria-label="Streaming"></div>
     <div class="row2">
       <select id="sort" aria-label="Sortierung">
         <option value="combo" data-i="s_combo"></option>
@@ -211,7 +222,7 @@ const $ = s => document.querySelector(s);
    Minden felirat itt van németül (de) és magyarul (hu). A HTML-ben csak
    jelölés van (data-i="..."), a setLang() tölti be a megfelelő szöveget. */
 const T = {
-  de: { h1:"Was läuft auf Netflix?", sub:"Filme in Deutschland und Ungarn, sortiert nach Bewertung",
+  de: { h1:"Was läuft im Streaming?", sub:"Filme auf Netflix, Prime Video, Disney+ und HBO Max – in Deutschland und Ungarn", svcLast:"Mindestens ein Dienst muss ausgewählt bleiben.",
     search:"Titel suchen", all:"Alle", both:"Beide", s_year:"Neueste Filme", s_added:"Neu im Katalog",
     s_gone:"Zuletzt entfernt", s_title:"Titel A–Z", v0:"Alle Stimmen", vN:n=>`ab ${n} Stimmen`,
     showGone:"Nicht mehr verfügbare Filme zeigen", seen:"Gesehen", panelTitle:"Sprache und Land", panelHint:"Tippe einmal für ✓ (nur diese), zweimal für ✗ (ausschließen), dreimal zurück auf neutral.",
@@ -225,7 +236,7 @@ const T = {
     since:d=>`Seit ${d}`, until:d=>`bis ${d}`, removed:d=>`Entfernt am ${d}`,
     f1:"Daten:", f2:"(Verfügbarkeit via JustWatch) und", f3:"Dieses Projekt wird nicht von TMDB unterstützt oder zertifiziert.",
     locale:"de-DE" },
-  hu: { h1:"Mi megy a Netflixen?", sub:"Filmek Németországban és Magyarországon, értékelés szerint rendezve",
+  hu: { h1:"Mi megy a streamingen?", sub:"Filmek a Netflixen, Prime Videón, Disney+-on és HBO Maxon – Németországban és Magyarországon", svcLast:"Legalább egy szolgáltatónak kiválasztva kell maradnia.",
     search:"Keresés cím alapján", all:"Mind", both:"Mindkettő", s_year:"Legújabb filmek", s_added:"Új a katalógusban",
     s_gone:"Nemrég eltávolítva", s_title:"Cím A–Z", v0:"Szavazat: mind", vN:n=>`min. ${n} szavazat`,
     showGone:"Már nem elérhető filmek mutatása", seen:"Láttam", panelTitle:"Nyelv és ország", panelHint:"Egy koppintás: ✓ (csak ezek), kettő: ✗ (kizárás), három: semleges.",
@@ -291,6 +302,14 @@ document.addEventListener("click", e => {
   savePicks(); fillChips(); apply();
 });
 $("#resetAll").addEventListener("click", resetAll);
+$("#svcBar").addEventListener("click", e => {
+  const b = e.target.closest(".svc"); if (!b) return;
+  const k = b.dataset.svc;
+  // az utolsó bekapcsolt szolgáltatót nem lehet kikapcsolni (különben üres lenne a lista)
+  if (svcSel(k) && svcKeys().filter(svcSel).length === 1) { alert(t("svcLast")); return; }
+  svcOn[k] = !svcSel(k);
+  store("svcOn", svcOn); fillSvcBar(); apply();
+});
 $("#expRec").addEventListener("click", () => {
   // Datei zum Hochladen ins Repo: data/ajanlasok.json
   const blob = new Blob([JSON.stringify({recs}, null, 1)], {type:"application/json"});
@@ -349,9 +368,12 @@ function combo(m){
   if (r.mc != null) v.push(r.mc);
   return v.length ? Math.round(v.reduce((a,b)=>a+b,0) / v.length) : null;
 }
-function newestFirst(m){
+/* "ÚJ" jelölés: egy kiválasztott szolgáltatónál az elmúlt 7 napban jelent meg.
+   A "since" a szolgáltató első figyelési napja – az aznapi első betöltés nem számít újnak. */
+function isNew(m){
   const cs = (country === "DE" || country === "HU") ? [country] : Object.keys(m.avail);
-  return cs.map(c => (m.avail[c] && m.avail[c].first) || "").sort().pop() || "";
+  return cs.some(c => Object.entries(m.avail[c] || {}).some(([k, a]) =>
+    svcSel(k) && a.on && a.first && a.first >= weekAgo && a.first > (since[`${c}:${k}`] || initial)));
 }
 const gname = id => { const n = genreNames[id]; return n ? (n[lang] || n.de) : null; };
 const gtags = m => (m.genres || []).map(gname).filter(Boolean).slice(0,2)
@@ -391,7 +413,6 @@ function passPicks(m){
   }
   return true;
 }
-const isNew = m => { const f = newestFirst(m); return !!f && f > initial && f >= weekAgo; };
 function fillYears(){
   for (const [id, key] of [["#yFrom","yFrom"],["#yTo","yTo"]]) {
     const sel = $(id), cur = sel.value;
@@ -408,7 +429,20 @@ function saveSeen(){ try { localStorage.setItem("seen", JSON.stringify(seen)) } 
 const load = (k) => { try { return JSON.parse(localStorage.getItem(k) || "{}") } catch(e){ return {} } };
 const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch(e){} };
 let watch = load("watch"), recs = load("recs");
-let hidden = load("hidden");   // elrejtett filmek: sehol nem jelennek meg, csak az "Elrejtett filmek" listában
+let hidden = load("hidden");
+/* Szolgáltatók: services = név + logó (a movies.json-ból), svcOn = melyik van bekapcsolva.
+   Ha egy kulcs hiányzik az svcOn-ból, az bekapcsoltnak számít. */
+const SVC_ORDER = ["netflix", "prime", "disney", "hbo"];
+const LOGO = "https://image.tmdb.org/t/p/w92";
+let services = {}, since = {}, svcOn = load("svcOn");
+const svcSel = k => svcOn[k] !== false;
+const svcKeys = () => SVC_ORDER.filter(k => services[k]).concat(Object.keys(services).filter(k => !SVC_ORDER.includes(k)));
+function fillSvcBar(){
+  $("#svcBar").innerHTML = svcKeys().map(k => {
+    const sv = services[k];
+    return `<button class="svc" data-svc="${k}" aria-pressed="${svcSel(k)}">${sv.logo ? `<img alt="" src="${LOGO}${sv.logo}">` : ""}${esc(sv.name || k)}</button>`;
+  }).join("");
+}   // elrejtett filmek: sehol nem jelennek meg, csak az "Elrejtett filmek" listában
 let recsRemote = {};   // aus data/ajanlasok.json – sichtbar für alle Besucher
 
 // Alle Filtereinstellungen merken (Auswahlfelder und Schalter)
@@ -430,6 +464,7 @@ function restoreFilters(){
 function activeFilters(){
   let n = 0;
   if (country !== "ALL") n++;
+  if (svcKeys().some(k => !svcSel(k))) n++;
   if ($("#q").value.trim()) n++;
   CTRL.forEach(id => { const v = $(id).value; if (id !== "#sort" && v && v !== "all" && v !== "0") n++; });
   if ($("#onlyNew").checked) n++;
@@ -444,6 +479,7 @@ function resetAll(){
   CTRL.forEach(id => { const el = $(id); el.value = (id === "#sort") ? "combo" : (el.querySelector('option[value="all"]') ? "all" : ""); });
   $("#onlyNew").checked = false; $("#showGone").checked = true;
   picks.lang = {}; picks.country = {}; savePicks(); fillChips();
+  svcOn = {}; store("svcOn", svcOn); fillSvcBar();
   saveFilters(); apply();
 }
 const IMG = "https://image.tmdb.org/t/p/w154";
@@ -453,8 +489,11 @@ const ttl = m => (lang === "hu" ? m.title_hu : m.title) || m.title || m.title_hu
 let all = [], view = [], shown = 0, country = "ALL", updated = null;
 const PAGE = 60;
 
-const onIn = (m, c) => !!(m.avail[c] && m.avail[c].on);
-const everIn = (m, c) => !!m.avail[c];
+/* avail szerkezete: { "DE": { "netflix": {first, on, last, gone}, "prime": {...} }, "HU": {...} }
+   onIn   = egy kiválasztott szolgáltatónál MOST elérhető az adott országban
+   everIn = egy kiválasztott szolgáltatónál valaha elérhető volt ott */
+const onIn = (m, c) => Object.entries(m.avail[c] || {}).some(([k, a]) => svcSel(k) && a.on);
+const everIn = (m, c) => Object.keys(m.avail[c] || {}).some(svcSel);
 
 function isAvailable(m){
   if (country === "DE" || country === "HU") return onIn(m, country);
@@ -464,10 +503,10 @@ function isAvailable(m){
 function inScope(m){
   if (country === "DE" || country === "HU") return everIn(m, country);
   if (country === "BOTH") return everIn(m,"DE") && everIn(m,"HU");
-  return true;
+  return everIn(m,"DE") || everIn(m,"HU");
 }
 function lastGone(m){
-  return Object.values(m.avail).map(a => a.gone || "").sort().pop() || "";
+  return Object.values(m.avail).flatMap(r => Object.values(r)).map(a => a.gone || "").sort().pop() || "";
 }
 
 function num(v){ return v == null ? -Infinity : v; }
@@ -536,12 +575,22 @@ function updateStats(){
 
 function esc(s){ return String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 
+/* Ország-jelvény: zászló + a szolgáltatók logói. A már nem elérhető szolgáltató
+   logója szürke. Ha az országban sehol sem fut, piros keret és "…-ig" dátum. */
 function flag(m, c, label){
-  const a = m.avail[c];
-  if (!a) return "";
-  return a.on
-    ? `<span class="flag" title="${t("since")(df(a.first))}">${label}</span>`
-    : `<span class="flag off" title="${t("removed")(df(a.gone))}"><span class="dot"></span>${label} ${t("until")(df(a.gone))}</span>`;
+  const reg = m.avail[c];
+  if (!reg) return "";
+  const list = Object.entries(reg).sort((x, y) => SVC_ORDER.indexOf(x[0]) - SVC_ORDER.indexOf(y[0]));
+  const logos = list.map(([k, a]) => {
+    const sv = services[k] || {name: k};
+    const tip = `${sv.name || k}: ${a.on ? t("since")(df(a.first)) : t("removed")(df(a.gone))}`;
+    return sv.logo
+      ? `<img class="${a.on ? "" : "off"}" alt="${esc(sv.name || k)}" title="${esc(tip)}" src="${LOGO}${sv.logo}">`
+      : `<span class="svct${a.on ? "" : " off"}" title="${esc(tip)}">${esc(sv.name || k)}</span>`;
+  }).join("");
+  if (list.some(([, a]) => a.on)) return `<span class="flag">${label}${logos}</span>`;
+  const gone = list.map(([, a]) => a.gone || "").sort().pop();
+  return `<span class="flag off">${label}${logos} ${t("until")(df(gone))}</span>`;
 }
 
 /* ===== 5. EGY FILM KIRAJZOLÁSA ===========================================
@@ -599,6 +648,11 @@ fetch("data/movies.json", {cache:"no-cache"})
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
   .then(db => {
     all = Object.values(db.movies);
+    // régi (csak Netflix) adatforma átalakítása, amíg az új update.py le nem fut
+    all.forEach(m => { for (const [c, a] of Object.entries(m.avail || {})) if ("on" in a || "first" in a) m.avail[c] = {netflix: a}; });
+    services = db.services || {netflix: {name: "Netflix", logo: null}};
+    since = db.since || {};
+    fillSvcBar();
     updated = db.updated || null;
     genreNames = db.genres || {};
     initial = all.map(m => m.added || "").filter(Boolean).sort()[0] || "";

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-NETFLIX-KATALÓGUS DE/HU – adatgyűjtő szkript
-============================================
+STREAMING-KATALÓGUS DE/HU – adatgyűjtő szkript
+==============================================
 Mit csinál? Megkérdezi a TMDB-t, mely filmek futnak a német és a magyar
-Netflixen, majd az OMDb-től elkéri az értékeléseket. Az eredményt egyetlen
-fájlba írja: data/movies.json. Filmet SOSEM töröl, csak megjelöli, hogy
-egy országban már nem elérhető.
+Netflixen, Amazon Prime-on, Disney+-on és HBO Maxon, majd az OMDb-től
+elkéri az értékeléseket. Az eredményt egyetlen fájlba írja: data/movies.json.
+Filmet SOSEM töröl, csak megjelöli, hogy egy szolgáltatónál már nem elérhető.
 
 Naponta egyszer fut a GitHub Actions által (lásd .github/workflows/update.yml).
 Részletes magyarázat: DOKUMENTACIO.md
@@ -25,9 +25,21 @@ OMDB_KEY = os.environ.get("OMDB_API_KEY", "")    # opcionális: enélkül nincs 
 OMDB_LIMIT = int(os.environ.get("OMDB_LIMIT", "950"))  # ingyenes keret: 1000/nap
 RATING_MAX_AGE_DAYS = 45      # ennyi nap után frissítjük újra egy film értékelését
 REGIONS = ["DE", "HU"]        # országkódok: Németország, Magyarország
-NETFLIX_ID = 8                # a Netflix azonosítója a TMDB-nél
 DB_FILE = "data/movies.json"  # az "adatbázisunk" – egyetlen JSON-fájl
-TODAY = date.today().isoformat()  # mai dátum "2026-09-18" formában
+TODAY = date.today().isoformat()  # mai dátum "2026-09-25" formában
+
+# --- a szolgáltatók ----------------------------------------------------------
+# A TMDB-nél egy szolgáltatónak több bejegyzése is lehet (pl. "Netflix" és
+# "Netflix Standard with Ads"). Ezért nem fix azonosítókat írunk be, hanem
+# NÉV alapján keressük meg őket országonként. Így ha a TMDB átnevez vagy új
+# csomagot vesz fel, a szkript magától megtalálja.
+#   kulcs  -> (megjelenített név, ellenőrző függvény a TMDB-névre)
+SERVICES = {
+    "netflix": ("Netflix",     lambda n: n.startswith("netflix")),
+    "prime":   ("Prime Video", lambda n: n.startswith("amazon prime video")),
+    "disney":  ("Disney+",     lambda n: n.startswith("disney plus") or n.startswith("disney+")),
+    "hbo":     ("HBO Max",     lambda n: n.startswith("hbo max") or n == "max"),
+}
 
 
 # --- alapfüggvények ---------------------------------------------------------
@@ -54,11 +66,33 @@ def tmdb(path, **params):
     return get_json(f"https://api.themoviedb.org/3{path}?{urllib.parse.urlencode(params)}")
 
 
-def fetch_region(region):
-    """Egy ország ÖSSZES Netflix-filmje.
+def resolve_services(region):
+    """Megkeresi, melyik TMDB-azonosító melyik szolgáltatóhoz tartozik az
+    adott országban. Visszaad: {"netflix": {"ids": [8, 1796], "logo": "/x.jpg"}, ...}
+    A "Channel" nevűeket kihagyjuk: azok Prime-on belüli, külön fizetős csatornák."""
+    out = {}
+    for p in tmdb("/watch/providers/movie", watch_region=region).get("results", []):
+        name = p.get("provider_name", "").lower()
+        if "channel" in name:
+            continue
+        for key, (_, match) in SERVICES.items():
+            if match(name):
+                s = out.setdefault(key, {"ids": [], "logo": None, "len": 999})
+                s["ids"].append(p["provider_id"])
+                # logónak a legrövidebb nevű bejegyzését vesszük (az a "fő" csomag)
+                if len(name) < s["len"]:
+                    s["len"], s["logo"] = len(name), p.get("logo_path")
+    for s in out.values():
+        s.pop("len")
+    return out
+
+
+def fetch_region(region, provider_ids):
+    """Egy ország egy szolgáltatójának ÖSSZES filmje.
 
     Trükk: a TMDB egy kereséshez max. 500 oldalt ad vissza, ezért évtizedekre
     bontjuk a keresést, és minden évtizedet külön lapozunk végig.
+    provider_ids: pl. [8, 1796] – a "|" jel VAGY-ot jelent a TMDB-nél.
     Visszaad: {"550": {film adatai}, ...} – kulcs a TMDB azonosító szövegként."""
     found = {}
     # dátumsávok: régi filmek, majd 1970-2029 évtizedenként, végül a jövő
@@ -69,10 +103,10 @@ def fetch_region(region):
         page, total = 1, 1
         while page <= min(total, 500):   # lapozás, de max. 500 oldal
             p = dict(
-                watch_region=region,                    # melyik ország kínálata
-                with_watch_providers=NETFLIX_ID,        # csak Netflix
-                with_watch_monetization_types="flatrate",  # csak előfizetésben (nem kölcsönzés)
-                language="de-DE",                       # német címek
+                watch_region=region,                                  # melyik ország kínálata
+                with_watch_providers="|".join(map(str, provider_ids)),  # melyik szolgáltató
+                with_watch_monetization_types="flatrate",  # csak előfizetésben (nem kölcsönzés/vásárlás)
+                language="de-DE",                          # német címek
                 sort_by="popularity.desc",
                 page=page)
             if start: p["primary_release_date.gte"] = start   # gte = "nagyobb vagy egyenlő"
@@ -114,6 +148,22 @@ def omdb(imdb_id):
     return r
 
 
+def migrate(db):
+    """Átalakítás a régi (csak Netflix) formátumról az új, több szolgáltatós formára.
+    Régi: avail = {"DE": {"first": ..., "on": ...}}
+    Új:   avail = {"DE": {"netflix": {"first": ..., "on": ...}, "prime": {...}}}
+    Csak egyszer fut le érdemben; utána már nincs mit átalakítani."""
+    since = db.setdefault("since", {})
+    for e in db["movies"].values():
+        for region, a in list(e.get("avail", {}).items()):
+            if "first" in a or "on" in a:          # ez még a régi forma
+                e["avail"][region] = {"netflix": a}
+                # "since" = mióta figyeljük ezt a szolgáltatót ebben az országban
+                key = f"{region}:netflix"
+                if a.get("first") and (key not in since or a["first"] < since[key]):
+                    since[key] = a["first"]
+
+
 # --- főprogram --------------------------------------------------------------
 
 def main():
@@ -122,47 +172,61 @@ def main():
     if os.path.exists(DB_FILE):            # ha van, betöltjük a tegnapi állapotot
         with open(DB_FILE, encoding="utf-8") as f:
             db = json.load(f)
+    migrate(db)
     movies = db["movies"]                  # rövidítés: a filmek szótára
+    since = db.setdefault("since", {})
+    services_info = {}                     # név + logó a weboldalnak
 
-    # === 1. LÉPÉS: mi fut most? ============================================
+    # === 1. LÉPÉS: mi fut most? (országonként, szolgáltatónként) ==========
     for region in REGIONS:
-        print(f"Netflix {region} betöltése …")
-        current = fetch_region(region)     # a friss lista az internetről
-        prev = sum(1 for m in movies.values() if m["avail"].get(region, {}).get("on"))
-        print(f"  {len(current)} film (korábban elérhető: {prev})")
+        found = resolve_services(region)
+        for svc, (label, _) in SERVICES.items():
+            if svc not in found:
+                print(f"{label} {region}: nincs ilyen szolgáltató a TMDB-nél, kihagyva.")
+                continue
+            ids = found[svc]["ids"]
+            info = services_info.setdefault(svc, {"name": label, "logo": None})
+            info["logo"] = info["logo"] or found[svc]["logo"]
+            print(f"{label} {region} (TMDB: {ids}) betöltése …")
+            current = fetch_region(region, ids)   # a friss lista az internetről
+            prev = sum(1 for m in movies.values()
+                       if m["avail"].get(region, {}).get(svc, {}).get("on"))
+            print(f"  {len(current)} film (korábban elérhető: {prev})")
+            since.setdefault(f"{region}:{svc}", TODAY)   # első figyelés napja
 
-        # Biztonsági fék: ha a friss lista gyanúsan kicsi (pl. API-hiba),
-        # NEM jelölünk semmit eltűntnek, inkább kihagyjuk ezt a lépést.
-        safe = len(current) >= 0.5 * prev
-        if not safe:
-            print("  FIGYELEM: túl kevés találat, a kivezetés kimarad.")
+            # Biztonsági fék: ha a friss lista gyanúsan kicsi (pl. API-hiba),
+            # NEM jelölünk semmit eltűntnek, inkább kihagyjuk ezt a lépést.
+            safe = len(current) >= 0.5 * prev
+            if not safe:
+                print("  FIGYELEM: túl kevés találat, a kivezetés kimarad.")
 
-        # a) ami a friss listán van: felvesszük vagy frissítjük
-        for mid, m in current.items():
-            e = movies.setdefault(mid, {           # setdefault: ha nincs, létrehozza
-                "id": int(mid),
-                "title": m.get("title"),           # német cím
-                "orig": m.get("original_title"),   # eredeti cím
-                "year": (m.get("release_date") or "")[:4] or None,  # "1999-10-15" -> "1999"
-                "poster": m.get("poster_path"),    # csak az útvonal, a képet a böngésző tölti
-                "added": TODAY,                    # mikor került a katalógusba
-                "avail": {},                       # országonkénti elérhetőség
-                "r": None,                         # értékelések, egyelőre üres
-            })
-            e["title"] = m.get("title") or e["title"]
-            e["poster"] = m.get("poster_path") or e.get("poster")
-            e["genres"] = m.get("genre_ids") or e.get("genres") or []   # műfaj-azonosítók
-            e["lang"] = m.get("original_language") or e.get("lang")     # eredeti nyelv, pl. "hi"
-            a = e["avail"].setdefault(region, {"first": TODAY})  # first = mióta van fent
-            a.update(on=True, last=TODAY)          # on = most elérhető, last = utolsó észlelés
+            # a) ami a friss listán van: felvesszük vagy frissítjük
+            for mid, m in current.items():
+                e = movies.setdefault(mid, {           # setdefault: ha nincs, létrehozza
+                    "id": int(mid),
+                    "title": m.get("title"),           # német cím
+                    "orig": m.get("original_title"),   # eredeti cím
+                    "year": (m.get("release_date") or "")[:4] or None,  # "1999-10-15" -> "1999"
+                    "poster": m.get("poster_path"),    # csak az útvonal, a képet a böngésző tölti
+                    "added": TODAY,                    # mikor került a katalógusba
+                    "avail": {},                       # ország -> szolgáltató -> elérhetőség
+                    "r": None,                         # értékelések, egyelőre üres
+                })
+                e["title"] = m.get("title") or e["title"]
+                e["poster"] = m.get("poster_path") or e.get("poster")
+                e["genres"] = m.get("genre_ids") or e.get("genres") or []   # műfaj-azonosítók
+                e["lang"] = m.get("original_language") or e.get("lang")     # eredeti nyelv, pl. "hi"
+                a = e["avail"].setdefault(region, {}).setdefault(svc, {"first": TODAY})
+                a.update(on=True, last=TODAY)          # on = most elérhető, last = utolsó észlelés
+                a.pop("gone", None)                    # ha visszakerült, töröljük a "gone" dátumot
 
-        # b) ami eltűnt a listáról: nem töröljük, csak megjelöljük
-        if safe:
-            for mid, e in movies.items():
-                a = e["avail"].get(region)
-                if a and a.get("on") and mid not in current:
-                    a["on"] = False
-                    a["gone"] = TODAY              # gone = ekkor tűnt el
+            # b) ami eltűnt a listáról: nem töröljük, csak megjelöljük
+            if safe:
+                for mid, e in movies.items():
+                    a = e["avail"].get(region, {}).get(svc)
+                    if a and a.get("on") and mid not in current:
+                        a["on"] = False
+                        a["gone"] = TODAY              # gone = ekkor tűnt el
 
     # === 2. LÉPÉS: részletek az új filmekhez ===============================
     # Egy hívásból négy adat: magyar cím, játékidő, gyártó ország, IMDb-azonosító.
@@ -188,7 +252,8 @@ def main():
     # === 3. LÉPÉS: értékelések (napi keret) ================================
     if OMDB_KEY:
         cutoff = (datetime.now() - timedelta(days=RATING_MAX_AGE_DAYS)).date().isoformat()
-        is_on = lambda e: any(a.get("on") for a in e["avail"].values())  # bárhol elérhető?
+        # bárhol elérhető? (bármelyik országban, bármelyik szolgáltatónál)
+        is_on = lambda e: any(s.get("on") for r in e["avail"].values() for s in r.values())
         # Sorrend: 1) akinek még egyáltalán nincs értékelése
         todo = [e for e in movies.values() if e.get("imdb_id") and not e.get("r_date")]
         # 2) akinek régi (45 napnál idősebb), és a film most is elérhető
@@ -210,6 +275,8 @@ def main():
     # === 4. LÉPÉS: mentés ==================================================
     db["updated"] = datetime.now().isoformat(timespec="minutes")  # "utoljára frissítve"
     db["regions"] = REGIONS
+    # szolgáltatók neve és logója a weboldalnak (a régit megtartjuk, ha most nem jött)
+    db["services"] = {**db.get("services", {}), **services_info}
 
     # Műfajnevek németül és magyarul, hogy a weboldal ki tudja írni őket
     try:
