@@ -22,7 +22,7 @@ from datetime import date, datetime, timedelta
 # A kulcsokat NEM ide írjuk! A GitHub Secrets-ből érkeznek környezeti változóként.
 TMDB_KEY = os.environ["TMDB_API_KEY"]            # kötelező, enélkül leáll
 OMDB_KEY = os.environ.get("OMDB_API_KEY", "")    # opcionális: enélkül nincs értékelés
-OMDB_LIMIT = int(os.environ.get("OMDB_LIMIT", "950"))  # ingyenes keret: 1000/nap
+OMDB_LIMIT = int(os.environ.get("OMDB_LIMIT", "15000"))  # ingyenes keret: 1000/nap
 RATING_MAX_AGE_DAYS = 45      # ennyi nap után frissítjük újra egy film értékelését
 REGIONS = ["DE", "HU"]        # országkódok: Németország, Magyarország
 DB_FILE = "data/movies.json"  # az "adatbázisunk" – egyetlen JSON-fájl
