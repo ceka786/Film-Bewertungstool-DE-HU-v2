@@ -1,21 +1,23 @@
+# Napi frissítés: lefuttatja az update.py-t, és elmenti a data/ mappát a repóba.
+# A repóban ennek a fájlnak a helye: .github/workflows/update.yml
 name: Katalog aktualisieren
 
 on:
   schedule:
-    - cron: "0 4 * * *"
-  workflow_dispatch:
+    - cron: "0 4 * * *"   # minden nap 04:00 UTC (nyáron 06:00 nálunk)
+  workflow_dispatch:       # kézzel is indítható: Actions → Run workflow
 
 permissions:
-  contents: write
+  contents: write          # a program visszaírhat a repóba
 
 concurrency:
-  group: katalog
+  group: katalog           # egyszerre csak egy futás lehet
   cancel-in-progress: false
 
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180   # a sorozatok első feltöltése hosszabb lehet
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -25,11 +27,14 @@ jobs:
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
           OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }}
+          # fizetős OMDb-kulcsnál: ennyi értékelést kér le futásonként.
+          # Ha visszaállsz az ingyenes kulcsra, töröld ezt a sort (akkor 950).
+          OMDB_LIMIT: 15000
         run: python -u update.py
       - name: Speichern
         run: |
           git config user.name "katalog-bot"
           git config user.email "katalog-bot@users.noreply.github.com"
-          git add data/movies.json
+          git add data/
           git diff --cached --quiet || git commit -m "Update $(date -u +%F)"
           git push
