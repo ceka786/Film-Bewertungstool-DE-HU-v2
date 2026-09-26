@@ -138,6 +138,7 @@ details.panel[open] summary::after{content:" ▴"}
 #more{height:1px}
 footer{max-width:760px;margin:0 auto;padding:0 16px 32px;color:var(--muted);font-size:12px}
 footer a{color:inherit}
+.tmdblogo{height:11px;width:auto;vertical-align:0;margin-right:6px}
 @media (min-width:600px){.controls-inner{grid-template-columns:1fr 1fr}.controls-inner>.full{grid-column:1/-1}}
 </style>
 </head>
@@ -238,6 +239,8 @@ footer a{color:inherit}
     <label><span data-i="imp"></span><input type="file" id="imp" accept="application/json,.json" hidden></label>
   </div>
   <p data-i="seenNote"></p>
+  <!-- TMDB hivatalos logója (kötelező feltüntetés), kicsiben, a lábléc elején -->
+  <a href="https://www.themoviedb.org" rel="noopener"><img class="tmdblogo" alt="TMDB" src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"></a>
   <span data-i="f1"></span> <a href="https://www.themoviedb.org" rel="noopener">TMDB</a> <span data-i="f2"></span> <a href="https://www.omdbapi.com" rel="noopener">OMDb</a>. <span data-i="f3"></span>
 </footer>
 
