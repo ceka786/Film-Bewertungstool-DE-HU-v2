@@ -1,11 +1,11 @@
 <!doctype html>
 <!--
-  NETFLIX-KATALÓGUS DE/HU – a weboldal
-  ====================================
+  STREAMING-KATALÓGUS DE/HU – a weboldal (v3: filmek + sorozatok)
+  ===============================================================
   Egyetlen fájl: HTML (szerkezet) + CSS (kinézet) + JavaScript (működés).
-  Adatot nem gyűjt, csak beolvassa a data/movies.json fájlt, amit az
-  update.py készít. A pipák és a szűrők a böngésződben tárolódnak.
-  Bővebb magyarázat: DOKUMENTACIO.md
+  Adatot nem gyűjt, csak beolvassa a data/movies.json és data/series.json
+  fájlokat, amiket az update.py készít. A pipák és a szűrők a böngésződben
+  tárolódnak. Bővebb magyarázat: DOKUMENTACIO.md
 -->
 <html lang="de">
 <head>
@@ -48,6 +48,12 @@ h1 small{display:block;font-size:.38em;font-weight:600;letter-spacing:0;color:va
 .controls{background:var(--bg);padding:10px 16px;border-bottom:1px solid var(--line)}
 .controls-inner{max-width:760px;margin:0 auto;display:grid;gap:8px}
 input[type=search],select{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+/* Filmek | Sorozatok fül – a legfontosabb választás, ezért a legnagyobb */
+.kinds{display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:2px solid var(--line)}
+.kinds button{font:inherit;font-size:20px;font-weight:800;background:none;border:0;border-bottom:4px solid transparent;margin-bottom:-2px;padding:8px 0 10px;color:var(--muted);cursor:pointer}
+.kinds button[aria-pressed=true]{color:var(--ink);border-bottom-color:var(--ink)}
+/* a fül szerint eltűnő elemek */
+body[data-kind=tv] .only-movie, body[data-kind=movie] .only-tv{display:none}
 .seg{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
 .seg button{font:inherit;font-size:15px;border:0;border-radius:7px;padding:8px 0;background:none;color:var(--ink);cursor:pointer}
 .seg button[aria-pressed=true]{background:var(--ink);color:var(--bg);font-weight:600}
@@ -60,7 +66,14 @@ input[type=search],select{width:100%;font:inherit;font-size:16px;color:var(--ink
 .lang button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .stats{max-width:760px;margin:0 auto;padding:10px 16px 0;color:var(--muted);font-size:14px}
 main{max-width:760px;margin:0 auto;padding:6px 8px 40px}
-/* ===== 4. EGY FILM SORA (poszter | cím | pontszámok) ==================== */
+/* szolgáltató-kapcsolók a szűrősávban */
+.svcbar{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.svc{font:inherit;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:4px;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:10px;padding:7px 2px;cursor:pointer}
+.svc img{width:28px;height:28px;border-radius:6px;filter:grayscale(1);opacity:.45}
+.svc[aria-pressed=true]{border:2px solid var(--ink);color:var(--ink);font-weight:600;padding:6px 1px}
+.svc[aria-pressed=true] img{filter:none;opacity:1}
+#resetAll{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:9px 12px;cursor:pointer}
+/* ===== 4. EGY SOR (poszter | cím | pontszámok) ========================== */
 .film{display:grid;grid-template-columns:54px 1fr auto;gap:12px;align-items:center;padding:10px 8px;border-bottom:1px solid var(--line)}
 .poster{width:54px;height:81px;border-radius:5px;background:var(--line);object-fit:cover;display:block}
 .title{font-weight:600;font-size:17px;line-height:1.2}
@@ -68,40 +81,45 @@ main{max-width:760px;margin:0 auto;padding:6px 8px 40px}
 .flags{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
 .flag{font-size:13px;border-radius:6px;padding:2px 7px;border:1px solid var(--line);background:var(--surface)}
 .flag.off{color:#C0392B;text-decoration:line-through;background:none;border-color:#C0392B}
+.flag.off::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#C0392B;margin-right:5px;vertical-align:middle}
 /* szolgáltató-logók a zászló mellett; a már nem elérhető logó szürke és halvány */
 .flag img{width:18px;height:18px;border-radius:4px;vertical-align:-4px;margin-left:4px}
 .flag img.off{filter:grayscale(1);opacity:.35}
 .flag .svct{font-size:11px;font-weight:600;margin-left:4px}
 .flag .svct.off{opacity:.4}
-/* szolgáltató-kapcsolók a szűrősávban */
-.svcbar{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-.svc{font:inherit;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:4px;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:10px;padding:7px 2px;cursor:pointer}
-.svc img{width:28px;height:28px;border-radius:6px;filter:grayscale(1);opacity:.45}
-.svc[aria-pressed=true]{border:2px solid var(--ink);color:var(--ink);font-weight:600;padding:6px 1px}
-.svc[aria-pressed=true] img{filter:none;opacity:1}
-.flag.off::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#C0392B;margin-right:5px;vertical-align:middle;text-decoration:none}
 .scores{display:grid;gap:4px;justify-items:end;text-align:right}
 .imdb{font-size:26px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 .imdb.hi{background:var(--lamp);color:var(--lamp-ink);border-radius:6px;padding:2px 6px}
 .sub{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
-.seen{font:inherit;font-size:13px;border-radius:6px;padding:2px 8px;border:1px dashed var(--muted);background:none;color:var(--muted);cursor:pointer}
+.combo{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.gtag{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 7px;background:none}
+.new{font-size:12px;font-weight:600;border-radius:6px;padding:2px 6px;background:var(--lamp);color:var(--lamp-ink)}
+.newseason{font-size:12px;font-weight:600;border-radius:6px;padding:2px 6px;background:#1F7A8C;color:#fff}
+.recbadge{font-size:12px;font-weight:600;border-radius:6px;padding:2px 6px;background:#6C4FB8;color:#fff}
+/* gombok a sorban: láttam / megnézem / ajánlom */
+.seen,.star,.rec{font:inherit;font-size:13px;border-radius:6px;padding:2px 8px;border:1px dashed var(--muted);background:none;color:var(--muted);cursor:pointer}
 .seen[aria-pressed=true]{border:1px solid #2E9E5B;background:#2E9E5B;color:#fff}
+.star[aria-pressed=true]{border:1px solid #C98A00;background:#C98A00;color:#fff}
+.rec[aria-pressed=true]{border:1px solid #6C4FB8;background:#6C4FB8;color:#fff}
+/* elrejtés (✕): kicsi kör a pontszám-oszlop tetején */
+.hide{font:inherit;font-size:13px;line-height:1;width:24px;height:24px;border-radius:50%;border:1px solid var(--line);background:none;color:var(--muted);cursor:pointer;padding:0}
+.hide:hover{border-color:#C0392B;color:#C0392B}
 .pw{position:relative;display:block;width:54px}
 .tick{position:absolute;right:-5px;top:-5px;width:20px;height:20px;border-radius:50%;background:#2E9E5B;color:#fff;font-size:12px;line-height:20px;text-align:center;border:2px solid var(--bg)}
 .film.watched .title{color:var(--muted)}
 .film a{color:inherit;text-decoration:none}
-.tools{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 10px}
-.tools button,.tools label{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 10px;cursor:pointer}
-/* Elrejtés-gomb (✕): kicsi kör a pontszám-oszlop tetején */
-.hide{font:inherit;font-size:13px;line-height:1;width:24px;height:24px;border-radius:50%;border:1px solid var(--line);background:none;color:var(--muted);cursor:pointer;padding:0}
-.hide:hover{border-color:#C0392B;color:#C0392B}
-.star{font:inherit;font-size:13px;border-radius:6px;padding:2px 8px;border:1px dashed var(--muted);background:none;color:var(--muted);cursor:pointer}
-.star[aria-pressed=true]{border:1px solid #C98A00;background:#C98A00;color:#fff}
-.rec{font:inherit;font-size:13px;border-radius:6px;padding:2px 8px;border:1px dashed var(--muted);background:none;color:var(--muted);cursor:pointer}
-.rec[aria-pressed=true]{border:1px solid #6C4FB8;background:#6C4FB8;color:#fff}
-.recbadge{font-size:12px;font-weight:600;border-radius:6px;padding:2px 6px;background:#6C4FB8;color:#fff}
-#resetAll{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:9px 12px;cursor:pointer}
-.new{font-size:12px;font-weight:600;border-radius:6px;padding:2px 6px;background:var(--lamp);color:var(--lamp-ink)}
+.film.gone{opacity:.42;filter:grayscale(1)}
+.film.gone .imdb.hi{background:none;color:inherit;padding:0}
+/* évadok lenyitható listája a sorozatoknál */
+details.seasons{margin-top:6px;font-size:13px}
+details.seasons summary{cursor:pointer;color:var(--muted);list-style:none;display:inline-block;border:1px solid var(--line);border-radius:6px;padding:2px 8px}
+details.seasons summary::-webkit-details-marker{display:none}
+details.seasons summary::after{content:" ▾"}
+details.seasons[open] summary::after{content:" ▴"}
+.srow{display:grid;grid-template-columns:auto 1fr auto;gap:10px;padding:5px 2px;border-bottom:1px dashed var(--line);font-variant-numeric:tabular-nums}
+.srow:last-child{border-bottom:0}
+.srow b{font-weight:600}
+.srow .sv{color:var(--muted)}
 /* ===== 5. "NYELV ÉS ORSZÁG" PANEL (a pipa/x gombok) ===================== */
 details.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 details.panel summary{font-size:15px;cursor:pointer;list-style:none}
@@ -113,10 +131,9 @@ details.panel[open] summary::after{content:" ▴"}
 .chip[data-s="1"]{border-color:#2E9E5B;background:#2E9E5B;color:#fff}
 .chip[data-s="2"]{border-color:#C0392B;background:#C0392B;color:#fff}
 .plabel{font-size:13px;color:var(--muted);margin-top:8px}
-.gtag{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 7px;background:none}
-.combo{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
-.film.gone{opacity:.42;filter:grayscale(1)}
-.film.gone .imdb.hi{background:none;color:inherit;padding:0}
+/* ===== 6. LÁBLÉC ======================================================== */
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 10px}
+.tools button,.tools label{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 10px;cursor:pointer}
 .empty,.error{padding:40px 16px;text-align:center;color:var(--muted)}
 #more{height:1px}
 footer{max-width:760px;margin:0 auto;padding:0 16px 32px;color:var(--muted);font-size:12px}
@@ -124,7 +141,7 @@ footer a{color:inherit}
 @media (min-width:600px){.controls-inner{grid-template-columns:1fr 1fr}.controls-inner>.full{grid-column:1/-1}}
 </style>
 </head>
-<body>
+<body data-kind="movie">
 <header>
   <div class="lang" role="group" aria-label="Sprache / Nyelv">
     <button data-l="de">DE</button><button data-l="hu">HU</button>
@@ -134,6 +151,11 @@ footer a{color:inherit}
 
 <div class="controls">
   <div class="controls-inner">
+    <!-- Filmek | Sorozatok: soha nem keverednek, a szűrők is ehhez igazodnak -->
+    <div class="kinds full" role="group" aria-label="Filme / Serien">
+      <button data-k="movie" data-i="tabMovie"></button>
+      <button data-k="tv" data-i="tabTv"></button>
+    </div>
     <input class="full" type="search" id="q" data-i-ph="search">
     <div class="seg full" role="group" aria-label="Land">
       <button data-c="ALL" aria-pressed="true" data-i="all"></button>
@@ -143,16 +165,7 @@ footer a{color:inherit}
     </div>
     <div class="svcbar full" id="svcBar" role="group" aria-label="Streaming"></div>
     <div class="row2">
-      <select id="sort" aria-label="Sortierung">
-        <option value="combo" data-i="s_combo"></option>
-        <option value="imdb">IMDb</option>
-        <option value="rt">Rotten Tomatoes</option>
-        <option value="mc">Metacritic</option>
-        <option value="year" data-i="s_year"></option>
-        <option value="added" data-i="s_added"></option>
-        <option value="gone" data-i="s_gone"></option>
-        <option value="title" data-i="s_title"></option>
-      </select>
+      <select id="sort" aria-label="Sortierung"></select>
       <select id="votes" aria-label="Mindestanzahl IMDb-Stimmen">
         <option value="0" data-i="v0"></option>
         <option value="1000"></option>
@@ -166,13 +179,27 @@ footer a{color:inherit}
     </div>
     <div class="row2">
       <select id="genre" aria-label="Genre"></select>
-      <select id="runtime" aria-label="Laufzeit">
+      <!-- csak filmeknél: játékidő -->
+      <select id="runtime" class="only-movie" aria-label="Laufzeit">
         <option value="" data-i="rt_any"></option>
         <option value="0-90" data-i="rt_90"></option>
         <option value="0-120" data-i="rt_120"></option>
         <option value="120-999" data-i="rt_long"></option>
       </select>
+      <!-- csak sorozatoknál: évadok száma -->
+      <select id="seasons" class="only-tv" aria-label="Staffeln">
+        <option value="" data-i="se_any"></option>
+        <option value="1-1" data-i="se_1"></option>
+        <option value="2-3" data-i="se_23"></option>
+        <option value="4-999" data-i="se_4"></option>
+      </select>
     </div>
+    <!-- csak sorozatoknál: állapot -->
+    <select id="status" class="full only-tv" aria-label="Status">
+      <option value="" data-i="st_any"></option>
+      <option value="run" data-i="st_run"></option>
+      <option value="end" data-i="st_end"></option>
+    </select>
     <details class="panel full">
       <summary data-i="panelTitle"></summary>
       <div class="plabel" data-i="panelHint"></div>
@@ -194,6 +221,7 @@ footer a{color:inherit}
       <option value="hidden" data-i="l_hidden"></option>
     </select>
     <label class="toggle full"><input type="checkbox" id="onlyNew"> <span data-i="onlyNew"></span></label>
+    <label class="toggle full only-tv"><input type="checkbox" id="newSeason"> <span data-i="newSeason"></span></label>
     <label class="toggle full"><input type="checkbox" id="showGone" checked> <span data-i="showGone"></span></label>
   </div>
 </div>
@@ -216,373 +244,357 @@ footer a{color:inherit}
 <script>
 /* ===== 1. SEGÉDESZKÖZÖK ==================================================
    $   = rövidítés elemek megkeresésére ("query selector")
-   IMG = a poszterképek címének eleje (a film saját útvonala jön utána) */
+   load/store = biztonságos olvasás/írás a böngésző tárolójába (localStorage) */
 const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const load = (k, def = {}) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def } catch(e){ return def } };
+const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch(e){} };
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num = v => v == null ? -Infinity : v;
+const today = () => new Date().toISOString().slice(0,10);
+const daysAgo = n => new Date(Date.now() - n*864e5).toISOString().slice(0,10);
+
 /* ===== 2. SZÖVEGEK KÉT NYELVEN ===========================================
    Minden felirat itt van németül (de) és magyarul (hu). A HTML-ben csak
-   jelölés van (data-i="..."), a setLang() tölti be a megfelelő szöveget. */
+   jelölés van (data-i="..."), az applyTexts() tölti be a szöveget.
+   Ha egy kulcsnak van "_tv" változata, a Sorozatok fülön az jelenik meg. */
 const T = {
-  de: { h1:"Was läuft im Streaming?", sub:"Filme auf Netflix, Prime Video, Disney+ und HBO Max – in Deutschland und Ungarn", svcLast:"Mindestens ein Dienst muss ausgewählt bleiben.",
-    search:"Titel suchen", all:"Alle", both:"Beide", s_year:"Neueste Filme", s_added:"Neu im Katalog",
-    s_gone:"Zuletzt entfernt", s_title:"Titel A–Z", v0:"Alle Stimmen", vN:n=>`ab ${n} Stimmen`,
-    showGone:"Nicht mehr verfügbare Filme zeigen", seen:"Gesehen", panelTitle:"Sprache und Land", panelHint:"Tippe einmal für ✓ (nur diese), zweimal für ✗ (ausschließen), dreimal zurück auf neutral.",
-    langLabel:"Originalsprache", countryLabel:"Produktionsland", resetPicks:"Auswahl zurücksetzen", picksActive:n=>` ${n} aktiv`, s_combo:"Kombi-Score", g_any:"Alle Genres", rt_any:"Laufzeit: alle", rt_90:"bis 90 Min.", rt_120:"bis 2 Std.", rt_long:"über 2 Std.", onlyNew:"Nur neu in den letzten 7 Tagen", newBadge:"NEU", min:"Min.", yFrom:"Jahr von", yTo:"bis Jahr", yAny:"alle", sf_all:"Gesehene und ungesehene", sf_no:"Nur ungesehene", sf_yes:"Nur gesehene", watch:"Merken", rec:"Ich empfehle", recBadge:"🍽 Empfehlung", l_all:"Alle Filme", l_watch:"Nur meine Merkliste", l_rec:"Nur meine Empfehlungen", l_hidden:"Ausgeblendete Filme", hideT:"Ausblenden", unhideT:"Wieder einblenden",
+  de: {
+    h1:"Was läuft im Streaming?", sub:"Filme und Serien auf Netflix, Prime Video, Disney+ und HBO Max – in Deutschland und Ungarn",
+    tabMovie:"Filme", tabTv:"Serien",
+    search:"Titel suchen", all:"Alle", both:"Beide", svcLast:"Mindestens ein Dienst muss ausgewählt bleiben.",
+    s_combo:"Kombi-Score", s_year:"Neueste Filme", s_year_tv:"Neueste Serien", s_newseason:"Neueste Staffel",
+    s_added:"Neu im Katalog", s_gone:"Zuletzt entfernt", s_title:"Titel A–Z",
+    v0:"Alle Stimmen", vN:n=>`ab ${n} Stimmen`, yFrom:"Jahr von", yTo:"bis Jahr", yAny:"alle", g_any:"Alle Genres",
+    rt_any:"Laufzeit: alle", rt_90:"bis 90 Min.", rt_120:"bis 2 Std.", rt_long:"über 2 Std.",
+    se_any:"Staffeln: alle", se_1:"1 Staffel", se_23:"2–3 Staffeln", se_4:"ab 4 Staffeln",
+    st_any:"Status: alle", st_run:"Läuft noch", st_end:"Abgeschlossen",
+    panelTitle:"Sprache und Land", panelHint:"Tippe einmal für ✓ (nur diese), zweimal für ✗ (ausschließen), dreimal zurück auf neutral.",
+    langLabel:"Originalsprache", countryLabel:"Produktionsland", resetPicks:"Auswahl zurücksetzen", picksActive:n=>` ${n} aktiv`,
+    sf_all:"Gesehene und ungesehene", sf_no:"Nur ungesehene", sf_yes:"Nur gesehene",
+    l_all:"Alle Filme", l_all_tv:"Alle Serien", l_watch:"Nur meine Merkliste", l_rec:"Nur meine Empfehlungen",
+    l_hidden:"Ausgeblendete Filme", l_hidden_tv:"Ausgeblendete Serien",
+    onlyNew:"Nur neu in den letzten 7 Tagen", newSeason:"Nur mit neuer Staffel (letzte 6 Monate)",
+    showGone:"Nicht mehr verfügbare Filme zeigen", showGone_tv:"Nicht mehr verfügbare Serien zeigen",
+    seen:"Gesehen", watch:"Merken", rec:"Ich empfehle", recBadge:"🍽 Empfehlung",
+    newBadge:"NEU", newSeasonBadge:"NEUE STAFFEL", hideT:"Ausblenden", unhideT:"Wieder einblenden",
+    min:"Min.", seasonsN:n=>`${n} ${n === 1 ? "Staffel" : "Staffeln"}`, episodes:n=>`${n} Folgen`,
+    seasonRow:n=>`${n}. Staffel`, running:"läuft",
     resetAll:n=>n ? `Filter zurücksetzen (${n} aktiv)` : "Keine Filter aktiv",
-    expRec:"Empfehlungen als Datei", recHint:"Datei ajanlasok.json ins Repo laden, dann sehen sie auch deine Brüder.",
-    exp:"Meine Listen sichern", imp:"Meine Listen laden", impOk:n=>`${n} Einträge übernommen.`, impErr:"Datei konnte nicht gelesen werden.", seenNote:"Deine Häkchen werden nur auf diesem Gerät gespeichert. Sichere die Liste ab und zu, bevor du Browserdaten löschst.", loading:"Katalog wird geladen …",
-    stats:(n,a)=>`${n} Filme, davon ${a} aktuell verfügbar.`, stand:d=>` Stand: ${d}.`,
-    empty:"Keine Filme gefunden. Suche oder Filter anpassen.",
+    exp:"Meine Listen sichern", imp:"Meine Listen laden", expRec:"Empfehlungen als Datei",
+    recHint:"Datei ajanlasok.json in den Ordner data im Repo laden, dann sehen sie auch deine Brüder.",
+    impOk:n=>`${n} Einträge übernommen.`, impErr:"Datei konnte nicht gelesen werden.",
+    seenNote:"Deine Häkchen und Listen werden nur auf diesem Gerät gespeichert. Sichere sie ab und zu, bevor du Browserdaten löschst.",
+    loading:"Katalog wird geladen …",
+    stats:(n,a)=>`${n} Filme, davon ${a} aktuell verfügbar.`, stats_tv:(n,a)=>`${n} Serien, davon ${a} aktuell verfügbar.`,
+    stand:d=>` Stand: ${d}.`,
+    empty:"Nichts gefunden. Suche oder Filter anpassen.",
     error:"Noch keine Daten vorhanden. Starte in GitHub unter „Actions“ den Workflow „Katalog aktualisieren“ und lade die Seite danach neu.",
     since:d=>`Seit ${d}`, until:d=>`bis ${d}`, removed:d=>`Entfernt am ${d}`,
     f1:"Daten:", f2:"(Verfügbarkeit via JustWatch) und", f3:"Dieses Projekt wird nicht von TMDB unterstützt oder zertifiziert.",
     locale:"de-DE" },
-  hu: { h1:"Mi megy a streamingen?", sub:"Filmek a Netflixen, Prime Videón, Disney+-on és HBO Maxon – Németországban és Magyarországon", svcLast:"Legalább egy szolgáltatónak kiválasztva kell maradnia.",
-    search:"Keresés cím alapján", all:"Mind", both:"Mindkettő", s_year:"Legújabb filmek", s_added:"Új a katalógusban",
-    s_gone:"Nemrég eltávolítva", s_title:"Cím A–Z", v0:"Szavazat: mind", vN:n=>`min. ${n} szavazat`,
-    showGone:"Már nem elérhető filmek mutatása", seen:"Láttam", panelTitle:"Nyelv és ország", panelHint:"Egy koppintás: ✓ (csak ezek), kettő: ✗ (kizárás), három: semleges.",
-    langLabel:"Eredeti nyelv", countryLabel:"Gyártó ország", resetPicks:"Választás törlése", picksActive:n=>` ${n} aktív`, s_combo:"Kombi pontszám", g_any:"Minden műfaj", rt_any:"Hossz: mind", rt_90:"max. 90 perc", rt_120:"max. 2 óra", rt_long:"2 óránál hosszabb", onlyNew:"Csak az elmúlt 7 nap újdonságai", newBadge:"ÚJ", min:"perc", yFrom:"Évtől", yTo:"Évig", yAny:"mind", sf_all:"Látott és nem látott", sf_no:"Csak nem látott", sf_yes:"Csak látott", watch:"Megnézem", rec:"Ajánlom", recBadge:"🍽 Ajánlott", l_all:"Minden film", l_watch:"Csak a listám", l_rec:"Csak az ajánlásaim", l_hidden:"Elrejtett filmek", hideT:"Elrejtés", unhideT:"Visszahozás",
+  hu: {
+    h1:"Mi megy a streamingen?", sub:"Filmek és sorozatok a Netflixen, Prime Videón, Disney+-on és HBO Maxon – Németországban és Magyarországon",
+    tabMovie:"Filmek", tabTv:"Sorozatok",
+    search:"Keresés cím alapján", all:"Mind", both:"Mindkettő", svcLast:"Legalább egy szolgáltatónak kiválasztva kell maradnia.",
+    s_combo:"Kombi pontszám", s_year:"Legújabb filmek", s_year_tv:"Legújabb sorozatok", s_newseason:"Legfrissebb évad",
+    s_added:"Új a katalógusban", s_gone:"Nemrég eltávolítva", s_title:"Cím A–Z",
+    v0:"Szavazat: mind", vN:n=>`min. ${n} szavazat`, yFrom:"Évtől", yTo:"Évig", yAny:"mind", g_any:"Minden műfaj",
+    rt_any:"Hossz: mind", rt_90:"max. 90 perc", rt_120:"max. 2 óra", rt_long:"2 óránál hosszabb",
+    se_any:"Évadok: mind", se_1:"1 évad", se_23:"2–3 évad", se_4:"4+ évad",
+    st_any:"Állapot: mind", st_run:"Még fut", st_end:"Befejeződött",
+    panelTitle:"Nyelv és ország", panelHint:"Egy koppintás: ✓ (csak ezek), kettő: ✗ (kizárás), három: semleges.",
+    langLabel:"Eredeti nyelv", countryLabel:"Gyártó ország", resetPicks:"Választás törlése", picksActive:n=>` ${n} aktív`,
+    sf_all:"Látott és nem látott", sf_no:"Csak nem látott", sf_yes:"Csak látott",
+    l_all:"Minden film", l_all_tv:"Minden sorozat", l_watch:"Csak a listám", l_rec:"Csak az ajánlásaim",
+    l_hidden:"Elrejtett filmek", l_hidden_tv:"Elrejtett sorozatok",
+    onlyNew:"Csak az elmúlt 7 nap újdonságai", newSeason:"Csak friss évaddal (elmúlt 6 hónap)",
+    showGone:"Már nem elérhető filmek mutatása", showGone_tv:"Már nem elérhető sorozatok mutatása",
+    seen:"Láttam", watch:"Megnézem", rec:"Ajánlom", recBadge:"🍽 Ajánlott",
+    newBadge:"ÚJ", newSeasonBadge:"ÚJ ÉVAD", hideT:"Elrejtés", unhideT:"Visszahozás",
+    min:"perc", seasonsN:n=>`${n} évad`, episodes:n=>`${n} rész`,
+    seasonRow:n=>`${n}. évad`, running:"fut",
     resetAll:n=>n ? `Szűrők törlése (${n} aktív)` : "Nincs aktív szűrő",
-    expRec:"Ajánlások fájlba", recHint:"Az ajanlasok.json fájlt töltsd fel a repóba, akkor a tesóid is látják.",
-    exp:"Listáim mentése", imp:"Listáim betöltése", impOk:n=>`${n} bejegyzés betöltve.`, impErr:"A fájlt nem sikerült beolvasni.", seenNote:"A pipák csak ezen az eszközön tárolódnak. Időnként mentsd el a listát, mielőtt böngészőadatokat törölsz.", loading:"Katalógus betöltése …",
-    stats:(n,a)=>`${n} film, ebből ${a} jelenleg elérhető.`, stand:d=>` Frissítve: ${d}.`,
+    exp:"Listáim mentése", imp:"Listáim betöltése", expRec:"Ajánlások fájlba",
+    recHint:"Az ajanlasok.json fájlt töltsd fel a repó data mappájába, akkor a tesóid is látják.",
+    impOk:n=>`${n} bejegyzés betöltve.`, impErr:"A fájlt nem sikerült beolvasni.",
+    seenNote:"A pipák és listák csak ezen az eszközön tárolódnak. Időnként mentsd el őket, mielőtt böngészőadatokat törölsz.",
+    loading:"Katalógus betöltése …",
+    stats:(n,a)=>`${n} film, ebből ${a} jelenleg elérhető.`, stats_tv:(n,a)=>`${n} sorozat, ebből ${a} jelenleg elérhető.`,
+    stand:d=>` Frissítve: ${d}.`,
     empty:"Nincs találat. Módosítsd a keresést vagy a szűrőket.",
     error:"Még nincsenek adatok. GitHubon az „Actions” fülön indítsd el a „Katalog aktualisieren” workflow-t, majd töltsd újra az oldalt.",
     since:d=>`Elérhető: ${d} óta`, until:d=>`${d}-ig`, removed:d=>`Eltávolítva: ${d}`,
     f1:"Adatok:", f2:"(elérhetőség: JustWatch) és", f3:"Ezt a projektet a TMDB nem támogatja és nem hitelesítette.",
     locale:"hu-HU" }
 };
-let lang = (()=>{ try { return localStorage.getItem("lang") } catch(e){ return null } })()
-  || ((navigator.language||"").toLowerCase().startsWith("hu") ? "hu" : "de");
-const t = k => T[lang][k];
-function setLang(l){
-  lang = l;
-  try { localStorage.setItem("lang", l) } catch(e){}
-  document.documentElement.lang = l;
-  document.querySelectorAll("[data-i]").forEach(el => el.textContent = t(el.dataset.i));
-  document.querySelectorAll("[data-i-ph]").forEach(el => { el.placeholder = t(el.dataset.iPh); el.setAttribute("aria-label", t(el.dataset.iPh)); });
-  document.querySelectorAll("#votes option").forEach(o => { if (+o.value) o.textContent = t("vN")(nf().format(+o.value)); });
-  $("#list").addEventListener("click", e => {
-  // ⭐ Merkliste und 🍽 Empfehlung: umschalten und Zeile neu zeichnen
-  const hb = e.target.closest(".hide");
-  if (hb) {
-    const row = hb.closest(".film"), id = row.dataset.id;
-    if (hidden[id]) delete hidden[id]; else hidden[id] = new Date().toISOString().slice(0,10);
-    store("hidden", hidden);
-    // a film kikerül az aktuális nézetből (elrejtve vagy visszahozva)
-    view = view.filter(m => String(m.id) !== id); shown = Math.max(0, shown - 1);
-    row.remove(); updateStats();
-    if (!view.length) $("#list").innerHTML = `<p class="empty">${t("empty")}</p>`;
-    return;
-  }
-  const sb = e.target.closest(".star"), rb = e.target.closest(".rec");
-  if (sb || rb) {
-    const row = (sb || rb).closest(".film"), id = row.dataset.id;
-    const obj = sb ? watch : recs, key = sb ? "watch" : "recs";
-    if (obj[id]) delete obj[id]; else obj[id] = new Date().toISOString().slice(0,10);
-    store(key, obj);
-    const m = all.find(x => String(x.id) === id);
-    if (m) { m._on = isAvailable(m); row.outerHTML = card(m); }
-    return;
-  }
-  const b = e.target.closest(".seen"); if (!b) return;
-  const row = b.closest(".film"), id = row.dataset.id;
-  if (seen[id]) delete seen[id]; else seen[id] = new Date().toISOString().slice(0,10);
-  saveSeen();
-  const w = !!seen[id];
-  row.classList.toggle("watched", w);
-  b.setAttribute("aria-pressed", w);
-  b.textContent = (w ? "✓ " : "") + t("seen");
-});
-/* ===== 7. KATTINTÁSOK ==================================================== */
-document.addEventListener("click", e => {
-  const c = e.target.closest(".chip[data-kind]"); if (!c) return;
-  const {kind, code} = c.dataset;
-  picks[kind][code] = ((picks[kind][code] || 0) + 1) % 3;
-  if (!picks[kind][code]) delete picks[kind][code];
-  savePicks(); fillChips(); apply();
-});
-$("#resetAll").addEventListener("click", resetAll);
-$("#svcBar").addEventListener("click", e => {
-  const b = e.target.closest(".svc"); if (!b) return;
-  const k = b.dataset.svc;
-  // az utolsó bekapcsolt szolgáltatót nem lehet kikapcsolni (különben üres lenne a lista)
-  if (svcSel(k) && svcKeys().filter(svcSel).length === 1) { alert(t("svcLast")); return; }
-  svcOn[k] = !svcSel(k);
-  store("svcOn", svcOn); fillSvcBar(); apply();
-});
-$("#expRec").addEventListener("click", () => {
-  // Datei zum Hochladen ins Repo: data/ajanlasok.json
-  const blob = new Blob([JSON.stringify({recs}, null, 1)], {type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob); a.download = "ajanlasok.json";
-  document.body.appendChild(a); a.click(); a.remove();
-  alert(t("recHint"));
-});
-$("#resetPicks").addEventListener("click", () => { picks.lang = {}; picks.country = {}; savePicks(); fillChips(); apply(); });
-$("#exp").addEventListener("click", () => {
-  const blob = new Blob([JSON.stringify({seen, watch, recs, hidden}, null, 1)], {type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `gesehen-${new Date().toISOString().slice(0,10)}.json`;
-  document.body.appendChild(a); a.click(); a.remove();
-});
-$("#imp").addEventListener("change", async e => {
-  const f = e.target.files[0]; if (!f) return;
-  try {
-    const d = JSON.parse(await f.text());
-    const add = d.seen || {};
-    Object.assign(seen, add); saveSeen();
-    Object.assign(watch, d.watch || {}); store("watch", watch);
-    Object.assign(recs, d.recs || {}); store("recs", recs);
-    Object.assign(hidden, d.hidden || {}); store("hidden", hidden);
-    apply();
-    const n = Object.keys(add).length + Object.keys(d.watch || {}).length + Object.keys(d.recs || {}).length + Object.keys(d.hidden || {}).length;
-    alert(t("impOk")(n));
-  } catch(err) { alert(t("impErr")); }
-  e.target.value = "";
-});
-document.querySelectorAll(".lang button").forEach(b => b.setAttribute("aria-pressed", b.dataset.l === l));
-  document.title = t("h1");
-  fillYears();
-  fillGenres();
-  if (loaded) { fillChips(); apply(); }
-}
+
 /* ===== 3. ÁLLAPOT ========================================================
-   all     = az összes film        | view    = ami épp a szűrők után látszik
-   seen    = a "láttam" pipáid     | picks   = nyelv/ország választás
-   Ezek localStorage-ba mentődnek: ez a böngésző saját kis tárolója. */
-let loaded = false;
-let years = [], genreNames = {}, initial = "", weekAgo = "";
-function fillGenres(){
-  const sel = $("#genre"), cur = sel.value;
-  const list = Object.entries(genreNames).map(([id,n]) => [id, n[lang] || n.de || id])
-    .sort((a,b) => a[1].localeCompare(b[1], lang));
-  sel.innerHTML = `<option value="">${t("g_any")}</option>` + list.map(([id,n]) => `<option value="${id}">${esc(n)}</option>`).join("");
-  sel.value = cur;
-}
-function combo(m){
-  const r = m.r; if (!r) return null;
-  const v = [];
-  if (r.imdb != null) v.push(r.imdb * 10);
-  if (r.rt != null) v.push(r.rt);
-  if (r.mc != null) v.push(r.mc);
-  return v.length ? Math.round(v.reduce((a,b)=>a+b,0) / v.length) : null;
-}
-/* "ÚJ" jelölés: egy kiválasztott szolgáltatónál az elmúlt 7 napban jelent meg.
-   A "since" a szolgáltató első figyelési napja – az aznapi első betöltés nem számít újnak. */
-function isNew(m){
-  const cs = (country === "DE" || country === "HU") ? [country] : Object.keys(m.avail);
-  return cs.some(c => Object.entries(m.avail[c] || {}).some(([k, a]) =>
-    svcSel(k) && a.on && a.first && a.first >= weekAgo && a.first > (since[`${c}:${k}`] || initial)));
-}
-const gname = id => { const n = genreNames[id]; return n ? (n[lang] || n.de) : null; };
-const gtags = m => (m.genres || []).map(gname).filter(Boolean).slice(0,2)
-  .map(n => `<span class="gtag">${esc(n)}</span>`).join("");
-let picks = (()=>{ try { return JSON.parse(localStorage.getItem("picks") || "{}") } catch(e){ return {} } })();
-picks.lang = picks.lang || {}; picks.country = picks.country || {};
-const savePicks = () => { try { localStorage.setItem("picks", JSON.stringify(picks)) } catch(e){} };
-const dn = (type, code) => {
-  try { return new Intl.DisplayNames([t("locale")], {type}).of(code) || code } catch(e){ return code }
+   kind  = "movie" vagy "tv" – melyik fül van kiválasztva
+   D     = a betöltött adatok fajtánként (csak az első megnyitáskor töltjük le)
+   L     = a saját listáid fajtánként: seen (láttam), watch (megnézem),
+           recs (ajánlom), hidden (elrejtett). A filmek a régi neveken maradnak,
+           hogy a korábbi pipáid megmaradjanak; a sorozatok "tv_" előtagot kapnak.
+   Minden a böngésző localStorage tárolójába mentődik. */
+const KINDS = {
+  movie: { file: "data/movies.json", key: "movies", pre: "" },
+  tv:    { file: "data/series.json", key: "items",  pre: "tv_" },
 };
-function chipList(kind){
-  const key = kind === "lang" ? "lang" : "country";
+const LIST_NAMES = ["seen", "watch", "recs", "hidden"];
+let lang = load("lang", null) || (() => { try { return localStorage.getItem("lang") } catch(e){ return null } })()
+  || ((navigator.language || "").toLowerCase().startsWith("hu") ? "hu" : "de");
+if (lang !== "de" && lang !== "hu") lang = "de";
+let kind = load("kind", "movie"); if (!KINDS[kind]) kind = "movie";
+const D = {movie: null, tv: null};
+const L = {};
+for (const k in KINDS) { L[k] = {}; LIST_NAMES.forEach(n => L[k][n] = load(KINDS[k].pre + n)); }
+const saveList = (k, n) => store(KINDS[k].pre + n, L[k][n]);
+let recsRemote = {movie: {}, tv: {}};  // a repóban lévő ajanlasok.json – mindenki látja
+let picks = load("picks"); picks.lang = picks.lang || {}; picks.country = picks.country || {};
+let svcOn = load("svcOn");             // melyik szolgáltató van bekapcsolva (hiányzó = be)
+let country = "ALL", view = [], shown = 0;
+const PAGE = 60;
+const IMG = "https://image.tmdb.org/t/p/w154", LOGO = "https://image.tmdb.org/t/p/w92";
+const SVC_ORDER = ["netflix", "prime", "disney", "hbo"];
+
+/* Szövegek: tk() a fülhöz illő változatot adja (pl. "Filme" vagy "Serien") */
+const t = k => T[lang][k];
+const tk = k => (kind === "tv" && T[lang][k + "_tv"] !== undefined) ? T[lang][k + "_tv"] : T[lang][k];
+const nf = () => new Intl.NumberFormat(t("locale"));
+const df = d => d ? new Date(d).toLocaleDateString(t("locale"), {day:"2-digit", month:"2-digit", year:"2-digit"}) : "";
+const ttl = m => (lang === "hu" ? m.title_hu : m.title) || m.title || m.title_hu || m.orig || "";
+const cur = () => D[kind];
+const svcSel = k => svcOn[k] !== false;
+const services = () => ({...(D.movie && D.movie.services), ...(D.tv && D.tv.services)});
+const svcKeys = () => { const s = services(); return SVC_ORDER.filter(k => s[k]).concat(Object.keys(s).filter(k => !SVC_ORDER.includes(k))); };
+
+/* ===== 4. SZÖVEGEK KIÍRÁSA ÉS LEGÖRDÜLŐK FELTÖLTÉSE =====================
+   Ezek csak kirajzolnak, eseménykezelőt NEM regisztrálnak (az a 9. részben
+   van, egyszer) – így nyelvváltáskor sem duplázódik semmi. */
+function applyTexts(){
+  document.documentElement.lang = lang;
+  $$("[data-i]").forEach(el => el.textContent = tk(el.dataset.i));
+  $$("[data-i-ph]").forEach(el => { el.placeholder = t(el.dataset.iPh); el.setAttribute("aria-label", t(el.dataset.iPh)); });
+  $$("#votes option").forEach(o => { if (+o.value) o.textContent = t("vN")(nf().format(+o.value)); });
+  $$(".lang button").forEach(b => b.setAttribute("aria-pressed", b.dataset.l === lang));
+  $$(".kinds button").forEach(b => b.setAttribute("aria-pressed", b.dataset.k === kind));
+  document.body.dataset.kind = kind;
+  document.title = t("h1");
+  fillSort(); fillYears(); fillGenres(); fillChips(); fillSvcBar();
+}
+function fillSort(){
+  const sel = $("#sort"), val = sel.value;
+  const opts = kind === "tv"
+    ? [["combo", t("s_combo")], ["imdb", "IMDb"], ["tmdb", "TMDB"], ["rt", "Rotten Tomatoes"], ["mc", "Metacritic"],
+       ["newseason", t("s_newseason")], ["year", tk("s_year")], ["added", t("s_added")], ["gone", t("s_gone")], ["title", t("s_title")]]
+    : [["combo", t("s_combo")], ["imdb", "IMDb"], ["rt", "Rotten Tomatoes"], ["mc", "Metacritic"],
+       ["year", tk("s_year")], ["added", t("s_added")], ["gone", t("s_gone")], ["title", t("s_title")]];
+  sel.innerHTML = opts.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join("");
+  sel.value = opts.some(o => o[0] === val) ? val : "combo";
+}
+function fillYears(){
+  const years = cur() ? cur().years : [];
+  for (const [id, key] of [["#yFrom","yFrom"], ["#yTo","yTo"]]) {
+    const sel = $(id), val = sel.value;
+    const list = key === "yTo" ? [...years].reverse() : years;
+    sel.innerHTML = `<option value="">${t(key)}: ${t("yAny")}</option>` + list.map(y => `<option value="${y}">${t(key)}: ${y}</option>`).join("");
+    sel.value = val; sel.setAttribute("aria-label", t(key));
+  }
+}
+function fillGenres(){
+  const sel = $("#genre"), val = sel.value, g = cur() ? cur().genres : {};
+  const list = Object.entries(g).map(([id, n]) => [id, n[lang] || n.de || id]).sort((a, b) => a[1].localeCompare(b[1], lang));
+  sel.innerHTML = `<option value="">${t("g_any")}</option>` + list.map(([id, n]) => `<option value="${id}">${esc(n)}</option>`).join("");
+  sel.value = val;
+}
+function fillSvcBar(){
+  const s = services();
+  $("#svcBar").innerHTML = svcKeys().map(k =>
+    `<button class="svc" data-svc="${k}" aria-pressed="${svcSel(k)}">${s[k].logo ? `<img alt="" src="${LOGO}${s[k].logo}">` : ""}${esc(s[k].name || k)}</button>`).join("");
+}
+
+/* Nyelv/ország panel: minden tétel semleges → ✓ (csak ezek) → ✗ (kizárva) */
+const dn = (type, code) => { try { return new Intl.DisplayNames([t("locale")], {type}).of(code) || code } catch(e){ return code } };
+function chipList(key){
   const count = {};
-  all.forEach(m => { const v = m[key]; if (v) count[v] = (count[v] || 0) + 1; });
-  return Object.keys(count).sort((a,b) => count[b] - count[a] || a.localeCompare(b));
+  (cur() ? cur().all : []).forEach(m => { const v = m[key]; if (v) count[v] = (count[v] || 0) + 1; });
+  return Object.keys(count).sort((a, b) => count[b] - count[a] || a.localeCompare(b));
 }
 function fillChips(){
-  for (const [kind, id] of [["lang","#langChips"],["country","#countryChips"]]) {
-    const box = $(id); if (!box) continue;
-    box.innerHTML = chipList(kind).map(code => {
-      const st = picks[kind][code] || 0;
-      const mark = st === 1 ? "✓ " : st === 2 ? "✗ " : "";
-      const name = kind === "lang" ? dn("language", code) : dn("region", code);
-      return `<button class="chip" data-kind="${kind}" data-code="${code}" data-s="${st}">${mark}${esc(name)}</button>`;
+  for (const [k, id] of [["lang", "#langChips"], ["country", "#countryChips"]]) {
+    $(id).innerHTML = chipList(k).map(code => {
+      const st = picks[k][code] || 0;
+      const name = k === "lang" ? dn("language", code) : dn("region", code);
+      return `<button class="chip" data-kind="${k}" data-code="${code}" data-s="${st}">${st === 1 ? "✓ " : st === 2 ? "✗ " : ""}${esc(name)}</button>`;
     }).join("");
   }
   const n = Object.values(picks.lang).filter(Boolean).length + Object.values(picks.country).filter(Boolean).length;
-  const sum = document.querySelector("details.panel summary");
-  if (sum) sum.textContent = t("panelTitle") + (n ? t("picksActive")(n) : "");
+  $("details.panel summary").textContent = t("panelTitle") + (n ? t("picksActive")(n) : "");
 }
 function passPicks(m){
-  for (const [kind, key] of [["lang","lang"],["country","country"]]) {
-    const p = picks[kind], v = m[key];
-    const wanted = Object.entries(p).filter(([,s]) => s === 1).map(([c]) => c);
+  for (const k of ["lang", "country"]) {
+    const p = picks[k], v = m[k];
+    const wanted = Object.keys(p).filter(c => p[c] === 1);
     if (v && p[v] === 2) return false;
     if (wanted.length && !(v && p[v] === 1)) return false;
   }
   return true;
 }
-function fillYears(){
-  for (const [id, key] of [["#yFrom","yFrom"],["#yTo","yTo"]]) {
-    const sel = $(id), cur = sel.value;
-    const list = key === "yTo" ? [...years].reverse() : years;
-    sel.innerHTML = `<option value="">${t(key)}: ${t("yAny")}</option>` +
-      list.map(y => `<option value="${y}">${key === "yFrom" ? t("yFrom") : t("yTo")}: ${y}</option>`).join("");
-    sel.value = cur;
-    sel.setAttribute("aria-label", t(key));
-  }
-}
-let seen = (()=>{ try { return JSON.parse(localStorage.getItem("seen") || "{}") } catch(e){ return {} } })();
-function saveSeen(){ try { localStorage.setItem("seen", JSON.stringify(seen)) } catch(e){} }
-// Merkliste (⭐) und eigene Empfehlungen (🍽) – genau wie "gesehen" lokal gespeichert
-const load = (k) => { try { return JSON.parse(localStorage.getItem(k) || "{}") } catch(e){ return {} } };
-const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch(e){} };
-let watch = load("watch"), recs = load("recs");
-let hidden = load("hidden");
-/* Szolgáltatók: services = név + logó (a movies.json-ból), svcOn = melyik van bekapcsolva.
-   Ha egy kulcs hiányzik az svcOn-ból, az bekapcsoltnak számít. */
-const SVC_ORDER = ["netflix", "prime", "disney", "hbo"];
-const LOGO = "https://image.tmdb.org/t/p/w92";
-let services = {}, since = {}, svcOn = load("svcOn");
-const svcSel = k => svcOn[k] !== false;
-const svcKeys = () => SVC_ORDER.filter(k => services[k]).concat(Object.keys(services).filter(k => !SVC_ORDER.includes(k)));
-function fillSvcBar(){
-  $("#svcBar").innerHTML = svcKeys().map(k => {
-    const sv = services[k];
-    return `<button class="svc" data-svc="${k}" aria-pressed="${svcSel(k)}">${sv.logo ? `<img alt="" src="${LOGO}${sv.logo}">` : ""}${esc(sv.name || k)}</button>`;
-  }).join("");
-}   // elrejtett filmek: sehol nem jelennek meg, csak az "Elrejtett filmek" listában
-let recsRemote = {};   // aus data/ajanlasok.json – sichtbar für alle Besucher
 
-// Alle Filtereinstellungen merken (Auswahlfelder und Schalter)
-const CTRL = ["#sort","#votes","#seenFilter","#listFilter","#yFrom","#yTo","#genre","#runtime"];
-const SWITCH = ["#onlyNew","#showGone"];
+/* ===== 5. SZŰRŐK MENTÉSE FÜLENKÉNT ======================================
+   A filmek és a sorozatok szűrői külön mentődnek ("filters" és "tv_filters"). */
+const CTRL = ["#sort","#votes","#seenFilter","#listFilter","#yFrom","#yTo","#genre","#runtime","#seasons","#status"];
+const SWITCH = ["#onlyNew","#newSeason","#showGone"];
+const DEFAULTS = {"#sort":"combo","#votes":"0","#seenFilter":"all","#listFilter":"all","#onlyNew":false,"#newSeason":false,"#showGone":true};
 function saveFilters(){
   const f = {country};
   CTRL.forEach(id => f[id] = $(id).value);
   SWITCH.forEach(id => f[id] = $(id).checked);
-  store("filters", f);
+  store(KINDS[kind].pre + "filters", f);
 }
 function restoreFilters(){
-  const f = load("filters");
-  if (f.country) { country = f.country; document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.c === country)); }
-  CTRL.forEach(id => { if (f[id] != null) $(id).value = f[id]; });
-  SWITCH.forEach(id => { if (f[id] != null) $(id).checked = f[id]; });
+  const f = load(KINDS[kind].pre + "filters");
+  country = f.country || "ALL";
+  $$(".seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.c === country));
+  CTRL.forEach(id => { const v = f[id] ?? DEFAULTS[id] ?? ""; $(id).value = v; if ($(id).value !== v) $(id).value = DEFAULTS[id] ?? ""; });
+  SWITCH.forEach(id => $(id).checked = f[id] ?? DEFAULTS[id]);
 }
-// Zählt, wie viele Filter vom Normalzustand abweichen
+/* hány szűrő tér el az alapállapottól (csak az aktuális fülön látható szűrők) */
 function activeFilters(){
-  let n = 0;
-  if (country !== "ALL") n++;
-  if (svcKeys().some(k => !svcSel(k))) n++;
-  if ($("#q").value.trim()) n++;
-  CTRL.forEach(id => { const v = $(id).value; if (id !== "#sort" && v && v !== "all" && v !== "0") n++; });
-  if ($("#onlyNew").checked) n++;
-  if (!$("#showGone").checked) n++;
+  let n = (country !== "ALL") + !!$("#q").value.trim() + svcKeys().some(k => !svcSel(k));
+  const ids = ["#votes","#seenFilter","#listFilter","#yFrom","#yTo","#genre"].concat(kind === "tv" ? ["#seasons","#status"] : ["#runtime"]);
+  ids.forEach(id => { const v = $(id).value; if (v && v !== "all" && v !== "0") n++; });
+  n += $("#onlyNew").checked + (kind === "tv" && $("#newSeason").checked) + !$("#showGone").checked;
   n += Object.values(picks.lang).filter(Boolean).length + Object.values(picks.country).filter(Boolean).length;
   return n;
 }
 function resetAll(){
-  country = "ALL";
-  document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.c === "ALL"));
-  $("#q").value = "";
-  CTRL.forEach(id => { const el = $(id); el.value = (id === "#sort") ? "combo" : (el.querySelector('option[value="all"]') ? "all" : ""); });
-  $("#onlyNew").checked = false; $("#showGone").checked = true;
-  picks.lang = {}; picks.country = {}; savePicks(); fillChips();
+  country = "ALL"; $("#q").value = "";
+  $$(".seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.c === "ALL"));
+  CTRL.forEach(id => $(id).value = DEFAULTS[id] ?? "");
+  SWITCH.forEach(id => $(id).checked = DEFAULTS[id]);
+  picks = {lang: {}, country: {}}; store("picks", picks); fillChips();
   svcOn = {}; store("svcOn", svcOn); fillSvcBar();
   saveFilters(); apply();
 }
-const IMG = "https://image.tmdb.org/t/p/w154";
-const nf = () => new Intl.NumberFormat(t("locale"));
-const df = d => d ? new Date(d).toLocaleDateString(t("locale"),{day:"2-digit",month:"2-digit",year:"2-digit"}) : "";
-const ttl = m => (lang === "hu" ? m.title_hu : m.title) || m.title || m.title_hu || m.orig || "";
-let all = [], view = [], shown = 0, country = "ALL", updated = null;
-const PAGE = 60;
 
-/* avail szerkezete: { "DE": { "netflix": {first, on, last, gone}, "prime": {...} }, "HU": {...} }
-   onIn   = egy kiválasztott szolgáltatónál MOST elérhető az adott országban
-   everIn = egy kiválasztott szolgáltatónál valaha elérhető volt ott */
+/* ===== 6. ELÉRHETŐSÉG, ÚJDONSÁG, PONTSZÁM ===============================
+   avail szerkezete: { "DE": { "netflix": {first, on, last, gone}, ... }, "HU": {...} }
+   onIn   = egy bekapcsolt szolgáltatónál MOST elérhető az adott országban
+   everIn = egy bekapcsolt szolgáltatónál valaha elérhető volt ott */
 const onIn = (m, c) => Object.entries(m.avail[c] || {}).some(([k, a]) => svcSel(k) && a.on);
 const everIn = (m, c) => Object.keys(m.avail[c] || {}).some(svcSel);
-
 function isAvailable(m){
   if (country === "DE" || country === "HU") return onIn(m, country);
-  if (country === "BOTH") return onIn(m,"DE") && onIn(m,"HU");
-  return onIn(m,"DE") || onIn(m,"HU");
+  if (country === "BOTH") return onIn(m, "DE") && onIn(m, "HU");
+  return onIn(m, "DE") || onIn(m, "HU");
 }
 function inScope(m){
   if (country === "DE" || country === "HU") return everIn(m, country);
-  if (country === "BOTH") return everIn(m,"DE") && everIn(m,"HU");
-  return everIn(m,"DE") || everIn(m,"HU");
+  if (country === "BOTH") return everIn(m, "DE") && everIn(m, "HU");
+  return everIn(m, "DE") || everIn(m, "HU");
 }
-function lastGone(m){
-  return Object.values(m.avail).flatMap(r => Object.values(r)).map(a => a.gone || "").sort().pop() || "";
+const lastGone = m => Object.values(m.avail).flatMap(r => Object.values(r)).map(a => a.gone || "").sort().pop() || "";
+/* "ÚJ": egy bekapcsolt szolgáltatónál az elmúlt 7 napban jelent meg. A szolgáltató
+   első figyelési napja (since) nem számít, különben minden újnak látszana. */
+function isNew(m){
+  const d = cur(), week = daysAgo(7);
+  const cs = (country === "DE" || country === "HU") ? [country] : Object.keys(m.avail);
+  return cs.some(c => Object.entries(m.avail[c] || {}).some(([k, a]) =>
+    svcSel(k) && a.on && a.first && a.first >= week && a.first > (d.since[`${c}:${k}`] || d.initial)));
 }
+/* legutóbbi, már megjelent évad (a jövőbeli bejelentett évadot nem számoljuk) */
+function lastSeason(m){
+  const now = today();
+  return (m.seasons || []).filter(s => s.date && s.date <= now).sort((a, b) => b.n - a.n)[0] || null;
+}
+/* "ÚJ ÉVAD": a legutóbbi évad (2. vagy későbbi) az elmúlt 6 hónapban jelent meg */
+function isNewSeason(m){ const s = lastSeason(m); return !!s && s.n > 1 && s.date >= daysAgo(183); }
+/* Kombi-pontszám 0–100: IMDb ×10, (sorozatnál TMDB ×10, ha legalább 20 szavazat), RT, MC átlaga */
+function combo(m){
+  const r = m.r || {}, v = [];
+  if (r.imdb != null) v.push(r.imdb * 10);
+  if (kind === "tv" && m.tmdb && (m.tmdb_n || 0) >= 20) v.push(m.tmdb * 10);
+  if (r.rt != null) v.push(r.rt);
+  if (r.mc != null) v.push(r.mc);
+  return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null;
+}
+const tmdbScore = m => (m.tmdb && (m.tmdb_n || 0) >= 20) ? m.tmdb : null;
 
-function num(v){ return v == null ? -Infinity : v; }
-
-/* ===== 4. A SZŰRÉS ÉS RENDEZÉS ===========================================
-   Itt dől el, mely filmek látszanak és milyen sorrendben.
+/* ===== 7. SZŰRÉS ÉS RENDEZÉS =============================================
    filter = kidobja, ami nem felel meg | sort = sorrendbe rakja */
 function apply(){
-  const q = $("#q").value.trim().toLowerCase();
-  const sort = $("#sort").value;
-  const minVotes = +$("#votes").value;
-  const showGone = $("#showGone").checked;
+  const d = cur(); if (!d) return;
+  const {seen, watch, recs, hidden} = L[kind], rRemote = recsRemote[kind];
+  const q = $("#q").value.trim().toLowerCase(), sort = $("#sort").value;
+  const minVotes = +$("#votes").value, showGone = $("#showGone").checked;
+  const yf = $("#yFrom").value, yt = $("#yTo").value, g = $("#genre").value;
+  const lf = $("#listFilter").value, sf = $("#seenFilter").value;
+  const rtv = $("#runtime").value, sev = $("#seasons").value, stv = $("#status").value;
+  const onlyNew = $("#onlyNew").checked, newSeason = kind === "tv" && $("#newSeason").checked;
 
-  view = all.filter(m => {
+  view = d.all.filter(m => {
     if (!inScope(m)) return false;
     m._on = isAvailable(m);
     if (!showGone && !m._on) return false;
-    const yf = $("#yFrom").value, yt = $("#yTo").value;
     if ((yf || yt) && !m.year) return false;
     if (yf && m.year < yf) return false;
     if (yt && m.year > yt) return false;
     if (!passPicks(m)) return false;
-    const g = $("#genre").value;
     if (g && !(m.genres || []).includes(+g)) return false;
-    const rtv = $("#runtime").value;
-    if (rtv) { const [lo, hi] = rtv.split("-").map(Number); if (!m.runtime || m.runtime <= lo || m.runtime > hi) return false; }
-    if ($("#onlyNew").checked && !isNew(m)) return false;
-    const lf = $("#listFilter").value;
+    if (kind === "movie" && rtv) { const [lo, hi] = rtv.split("-").map(Number); if (!m.runtime || m.runtime <= lo || m.runtime > hi) return false; }
+    if (kind === "tv" && sev) { const [lo, hi] = sev.split("-").map(Number); if (!m.n_s || m.n_s < lo || m.n_s > hi) return false; }
+    if (kind === "tv" && stv && m.status !== stv) return false;
+    if (onlyNew && !isNew(m)) return false;
+    if (newSeason && !isNewSeason(m)) return false;
     if (lf === "hidden" ? !hidden[m.id] : hidden[m.id]) return false;   // elrejtés
     if (lf === "watch" && !watch[m.id]) return false;
-    if (lf === "rec" && !(recs[m.id] || recsRemote[m.id])) return false;
-    const sf = $("#seenFilter").value;
+    if (lf === "rec" && !(recs[m.id] || rRemote[m.id])) return false;
     if (sf === "yes" && !seen[m.id]) return false;
     if (sf === "no" && seen[m.id]) return false;
     if (minVotes && ((m.r && m.r.votes) || 0) < minVotes) return false;
-    if (q && !(`${m.title||""} ${m.title_hu||""} ${m.orig||""}`.toLowerCase().includes(q))) return false;
+    if (q && !`${m.title || ""} ${m.title_hu || ""} ${m.orig || ""}`.toLowerCase().includes(q)) return false;
     return true;
   });
 
-  const r = (m,k) => m.r ? num(m.r[k]) : -Infinity;
+  const r = (m, k) => m.r ? num(m.r[k]) : -Infinity;
+  const ls = m => (lastSeason(m) || {}).date || "";
   const cmp = {
-    combo:(a,b) => num(combo(b))-num(combo(a)) || r(b,"votes")-r(a,"votes"),
-    imdb: (a,b) => r(b,"imdb")-r(a,"imdb") || r(b,"votes")-r(a,"votes"),
-    rt:   (a,b) => r(b,"rt")-r(a,"rt") || r(b,"imdb")-r(a,"imdb"),
-    mc:   (a,b) => r(b,"mc")-r(a,"mc") || r(b,"imdb")-r(a,"imdb"),
-    year: (a,b) => (b.year||"").localeCompare(a.year||""),
-    added:(a,b) => (b.added||"").localeCompare(a.added||""),
-    gone: (a,b) => lastGone(b).localeCompare(lastGone(a)),
-    title:(a,b) => ttl(a).localeCompare(ttl(b), lang),
-  }[sort];
-  // verfügbare zuerst, außer bei "Zuletzt entfernt"
-  view.sort((a,b) => (sort !== "gone" && (b._on - a._on)) || cmp(a,b));
+    combo: (a, b) => num(combo(b)) - num(combo(a)) || r(b, "votes") - r(a, "votes"),
+    imdb:  (a, b) => r(b, "imdb") - r(a, "imdb") || r(b, "votes") - r(a, "votes"),
+    tmdb:  (a, b) => num(tmdbScore(b)) - num(tmdbScore(a)) || (b.tmdb_n || 0) - (a.tmdb_n || 0),
+    rt:    (a, b) => r(b, "rt") - r(a, "rt") || r(b, "imdb") - r(a, "imdb"),
+    mc:    (a, b) => r(b, "mc") - r(a, "mc") || r(b, "imdb") - r(a, "imdb"),
+    newseason: (a, b) => ls(b).localeCompare(ls(a)),
+    year:  (a, b) => (b.year || "").localeCompare(a.year || ""),
+    added: (a, b) => (b.added || "").localeCompare(a.added || ""),
+    gone:  (a, b) => lastGone(b).localeCompare(lastGone(a)),
+    title: (a, b) => ttl(a).localeCompare(ttl(b), lang),
+  }[sort] || (() => 0);
+  // az elérhetők előre, kivéve a "Nemrég eltávolítva" rendezésnél
+  view.sort((a, b) => (sort !== "gone" && (b._on - a._on)) || cmp(a, b));
 
   updateStats();
   $("#list").innerHTML = view.length ? "" : `<p class="empty">${t("empty")}</p>`;
-  shown = 0;
-  renderMore();
+  shown = 0; renderMore();
 }
-
-/* Számláló és "Szűrők törlése" felirat frissítése */
 function updateStats(){
+  const d = cur();
   $("#resetAll").textContent = t("resetAll")(activeFilters());
+  if (!d) return;
   const avail = view.filter(m => m._on).length;
-  $("#stats").textContent = t("stats")(nf().format(view.length), nf().format(avail)) + (updated ? t("stand")(new Date(updated).toLocaleString(t("locale"),{dateStyle:"short",timeStyle:"short"})) : "");
+  $("#stats").textContent = tk("stats")(nf().format(view.length), nf().format(avail))
+    + (d.updated ? t("stand")(new Date(d.updated).toLocaleString(t("locale"), {dateStyle: "short", timeStyle: "short"})) : "");
 }
 
-function esc(s){ return String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
-
-/* Ország-jelvény: zászló + a szolgáltatók logói. A már nem elérhető szolgáltató
-   logója szürke. Ha az országban sehol sem fut, piros keret és "…-ig" dátum. */
+/* ===== 8. EGY SOR KIRAJZOLÁSA ============================================
+   Szövegből épít HTML-t. Az esc() védi az oldalt a különleges karakterektől. */
 function flag(m, c, label){
-  const reg = m.avail[c];
-  if (!reg) return "";
+  const reg = m.avail[c]; if (!reg) return "";
+  const s = services();
   const list = Object.entries(reg).sort((x, y) => SVC_ORDER.indexOf(x[0]) - SVC_ORDER.indexOf(y[0]));
   const logos = list.map(([k, a]) => {
-    const sv = services[k] || {name: k};
+    const sv = s[k] || {name: k};
     const tip = `${sv.name || k}: ${a.on ? t("since")(df(a.first)) : t("removed")(df(a.gone))}`;
     return sv.logo
       ? `<img class="${a.on ? "" : "off"}" alt="${esc(sv.name || k)}" title="${esc(tip)}" src="${LOGO}${sv.logo}">`
@@ -592,88 +604,184 @@ function flag(m, c, label){
   const gone = list.map(([, a]) => a.gone || "").sort().pop();
   return `<span class="flag off">${label}${logos} ${t("until")(df(gone))}</span>`;
 }
-
-/* ===== 5. EGY FILM KIRAJZOLÁSA ===========================================
-   Szövegből épít HTML-t. Az esc() védi az oldalt a különleges karakterektől. */
+const gtags = m => (m.genres || []).map(id => { const n = cur().genres[id]; return n ? (n[lang] || n.de) : null; })
+  .filter(Boolean).slice(0, 2).map(n => `<span class="gtag">${esc(n)}</span>`).join("");
+/* a meta-sor: filmnél "1999, 139 perc", sorozatnál "2019–2023, 3 évad, 24 rész" */
+function meta(m){
+  const orig = m.orig && m.orig !== ttl(m) ? `, ${esc(m.orig)}` : "";
+  if (kind === "movie") return `${esc(m.year || "")}${m.runtime ? `, ${m.runtime} ${t("min")}` : ""}${orig}`;
+  const years = m.year ? (m.status === "end" ? (m.end && m.end !== m.year ? `${m.year}–${m.end}` : m.year) : `${m.year}– (${t("running")})`) : "";
+  return [years, m.n_s ? t("seasonsN")(m.n_s) : "", m.n_e ? t("episodes")(m.n_e) : ""].filter(Boolean).join(", ") + orig;
+}
+/* évadok lenyitható listája: "2. évad · 2021 · 8 rész · TMDB 8.1" */
+function seasonsBlock(m){
+  if (kind !== "tv" || !(m.seasons || []).length) return "";
+  const rows = [...m.seasons].sort((a, b) => a.n - b.n).map(s =>
+    `<div class="srow"><b>${t("seasonRow")(s.n)}</b><span>${s.date ? s.date.slice(0, 4) : "–"}${s.ep ? ` · ${t("episodes")(s.ep)}` : ""}</span><span class="sv">${s.vote ? `TMDB ${s.vote.toFixed(1)}` : "–"}</span></div>`).join("");
+  return `<details class="seasons"><summary>${t("seasonsN")(m.seasons.length)}</summary>${rows}</details>`;
+}
 function card(m){
+  const {seen, watch, recs, hidden} = L[kind];
   const r = m.r || {};
   const imdb = r.imdb != null ? r.imdb.toFixed(1) : "–";
   const hi = r.imdb >= 7.5 ? " hi" : "";
-  const orig = m.orig && m.orig !== ttl(m) ? `, ${esc(m.orig)}` : "";
-  const link = m.imdb_id ? `https://www.imdb.com/title/${m.imdb_id}/` : `https://www.themoviedb.org/movie/${m.id}`;
-  const w = !!seen[m.id], wl = !!watch[m.id], rc = !!(recs[m.id] || recsRemote[m.id]);
+  const link = m.imdb_id ? `https://www.imdb.com/title/${m.imdb_id}/` : `https://www.themoviedb.org/${kind}/${m.id}`;
+  const w = !!seen[m.id], wl = !!watch[m.id], rc = !!(recs[m.id] || recsRemote[kind][m.id]), hd = !!hidden[m.id];
+  const ts = kind === "tv" ? tmdbScore(m) : null;
   return `<div class="film${m._on ? "" : " gone"}${w ? " watched" : ""}" data-id="${m.id}">
     <a class="pw" href="${link}" target="_blank" rel="noopener">${m.poster ? `<img class="poster" loading="lazy" alt="" src="${IMG}${m.poster}">` : `<div class="poster"></div>`}${w ? `<span class="tick" aria-hidden="true">✓</span>` : ""}</a>
     <div>
       <a class="title" href="${link}" target="_blank" rel="noopener">${esc(ttl(m))}</a>
-      <div class="meta">${esc(m.year || "")}${m.runtime ? `, ${m.runtime} ${t("min")}` : ""}${orig}</div>
-      <div class="flags">${isNew(m) ? `<span class="new">${t("newBadge")}</span>` : ""}${rc ? `<span class="recbadge">${t("recBadge")}</span>` : ""}${flag(m,"DE","🇩🇪")}${flag(m,"HU","🇭🇺")}${gtags(m)}<button class="seen" aria-pressed="${w}">${w ? "✓ " : ""}${t("seen")}</button><button class="star" aria-pressed="${wl}">${wl ? "★ " : "☆ "}${t("watch")}</button><button class="rec" aria-pressed="${!!recs[m.id]}">${t("rec")}</button></div>
+      <div class="meta">${meta(m)}</div>
+      <div class="flags">${isNew(m) ? `<span class="new">${t("newBadge")}</span>` : ""}${kind === "tv" && isNewSeason(m) ? `<span class="newseason">${t("newSeasonBadge")}</span>` : ""}${rc ? `<span class="recbadge">${t("recBadge")}</span>` : ""}${flag(m, "DE", "🇩🇪")}${flag(m, "HU", "🇭🇺")}${gtags(m)}<button class="seen" aria-pressed="${w}">${w ? "✓ " : ""}${t("seen")}</button><button class="star" aria-pressed="${wl}">${wl ? "★ " : "☆ "}${t("watch")}</button><button class="rec" aria-pressed="${!!recs[m.id]}">${t("rec")}</button></div>
+      ${seasonsBlock(m)}
     </div>
     <div class="scores">
-      <button class="hide" title="${hidden[m.id] ? t("unhideT") : t("hideT")}" aria-label="${hidden[m.id] ? t("unhideT") : t("hideT")}">${hidden[m.id] ? "↺" : "✕"}</button>
+      <button class="hide" title="${hd ? t("unhideT") : t("hideT")}" aria-label="${hd ? t("unhideT") : t("hideT")}">${hd ? "↺" : "✕"}</button>
       <div class="imdb${hi}" title="IMDb">${imdb}</div>
       <div class="combo" title="${t("s_combo")}">Ø ${combo(m) ?? "–"}</div>
+      ${kind === "tv" ? `<div class="sub">TMDB ${ts != null ? ts.toFixed(1) : "–"}</div>` : ""}
       <div class="sub">🍅 ${r.rt != null ? r.rt + "%" : "–"}</div>
       <div class="sub">MC ${r.mc != null ? r.mc : "–"}</div>
     </div>
   </div>`;
 }
-
-/* ===== 6. FOKOZATOS BETÖLTÉS =============================================
-   Nem rajzolunk ki egyszerre 7000 filmet, csak 60-at. Ha az oldal aljára
+/* Fokozatos betöltés: egyszerre csak 60 sort rajzolunk ki. Ha az oldal aljára
    érsz (IntersectionObserver figyeli), jön a következő adag. */
 function renderMore(){
   const chunk = view.slice(shown, shown + PAGE);
   $("#list").insertAdjacentHTML("beforeend", chunk.map(card).join(""));
   shown += chunk.length;
 }
+new IntersectionObserver(e => { if (e[0].isIntersecting && shown < view.length) renderMore(); }, {rootMargin: "800px"}).observe($("#more"));
 
-new IntersectionObserver(e => { if (e[0].isIntersecting && shown < view.length) renderMore(); },
-  {rootMargin:"800px"}).observe($("#more"));
-
-document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
-  country = b.dataset.c; saveFilters();
-  document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x === b));
-  apply(); window.scrollTo({top:0});
+/* ===== 9. ESEMÉNYKEZELŐK – mind EGYSZER regisztrálva ===================== */
+// Filmek | Sorozatok fül
+$$(".kinds button").forEach(b => b.addEventListener("click", () => {
+  if (b.dataset.k === kind) return;
+  saveFilters();                 // az előző fül szűrőinek mentése
+  kind = b.dataset.k; store("kind", kind);
+  $("#list").innerHTML = ""; $("#stats").textContent = t("loading");
+  showKind();
 }));
+// nyelv
+$$(".lang button").forEach(b => b.addEventListener("click", () => {
+  lang = b.dataset.l; store("lang", lang);
+  applyTexts(); apply();
+}));
+// ország
+$$(".seg button").forEach(b => b.addEventListener("click", () => {
+  country = b.dataset.c; saveFilters();
+  $$(".seg button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  apply(); window.scrollTo({top: 0});
+}));
+// keresés (kis késleltetéssel, hogy ne minden betűnél számoljon)
 let qTimer; $("#q").addEventListener("input", () => { clearTimeout(qTimer); qTimer = setTimeout(apply, 150); });
-["#sort","#votes","#showGone","#seenFilter","#listFilter","#yFrom","#yTo","#genre","#runtime","#onlyNew"].forEach(s => $(s).addEventListener("change", () => { saveFilters(); apply(); }));
+// legördülők és kapcsolók
+CTRL.concat(SWITCH).forEach(s => $(s).addEventListener("change", () => { saveFilters(); apply(); }));
+$("#resetAll").addEventListener("click", resetAll);
+// szolgáltatók
+$("#svcBar").addEventListener("click", e => {
+  const b = e.target.closest(".svc"); if (!b) return;
+  const k = b.dataset.svc;
+  // az utolsó bekapcsolt szolgáltatót nem lehet kikapcsolni (különben üres lenne a lista)
+  if (svcSel(k) && svcKeys().filter(svcSel).length === 1) { alert(t("svcLast")); return; }
+  svcOn[k] = !svcSel(k); store("svcOn", svcOn); fillSvcBar(); apply();
+});
+// nyelv/ország panel
+$("#langChips").parentElement.addEventListener("click", e => {
+  const c = e.target.closest(".chip[data-kind]"); if (!c) return;
+  const {kind: k, code} = c.dataset;
+  picks[k][code] = ((picks[k][code] || 0) + 1) % 3;
+  if (!picks[k][code]) delete picks[k][code];
+  store("picks", picks); fillChips(); apply();
+});
+$("#resetPicks").addEventListener("click", () => { picks = {lang: {}, country: {}}; store("picks", picks); fillChips(); apply(); });
+// gombok a sorokban: ✕ elrejtés, ⭐ megnézem, 🍽 ajánlom, ✓ láttam
+$("#list").addEventListener("click", e => {
+  const btn = e.target.closest(".hide, .star, .rec, .seen"); if (!btn) return;
+  const row = btn.closest(".film"), id = row.dataset.id;
+  const name = btn.classList.contains("hide") ? "hidden" : btn.classList.contains("star") ? "watch"
+             : btn.classList.contains("rec") ? "recs" : "seen";
+  const obj = L[kind][name];
+  if (obj[id]) delete obj[id]; else obj[id] = today();
+  saveList(kind, name);
+  if (name === "hidden") {
+    // a sor kikerül az aktuális nézetből; nem rajzoljuk újra az egészet,
+    // így a lista nem ugrik vissza a tetejére
+    view = view.filter(m => String(m.id) !== id); shown = Math.max(0, shown - 1);
+    row.remove(); updateStats();
+    if (!view.length) $("#list").innerHTML = `<p class="empty">${t("empty")}</p>`;
+    return;
+  }
+  const m = cur().all.find(x => String(x.id) === id);
+  if (m) row.outerHTML = card(m);   // csak ezt az egy sort rajzoljuk újra
+});
+// listák mentése fájlba: filmek a gyökérben (régi formátum), sorozatok a "tv" alatt
+$("#exp").addEventListener("click", () => {
+  const out = {...L.movie, tv: L.tv};
+  download(`listak-${today()}.json`, out);
+});
+$("#expRec").addEventListener("click", () => {
+  download("ajanlasok.json", {recs: L.movie.recs, recs_tv: L.tv.recs});
+  alert(t("recHint"));
+});
+$("#imp").addEventListener("change", async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    let n = 0;
+    for (const [k, src] of [["movie", d], ["tv", d.tv || {}]]) {
+      LIST_NAMES.forEach(name => { const add = src[name] || {}; n += Object.keys(add).length; Object.assign(L[k][name], add); saveList(k, name); });
+    }
+    apply(); alert(t("impOk")(n));
+  } catch(err) { alert(t("impErr")); }
+  e.target.value = "";
+});
+function download(name, obj){
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 1)], {type: "application/json"}));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+}
 
-document.querySelectorAll(".lang button").forEach(b => b.addEventListener("click", () => setLang(b.dataset.l)));
-setLang(lang);
-$("#stats").textContent = t("loading");
-/* ===== 8. ADATOK BETÖLTÉSE ===============================================
-   Ez fut le utoljára: beolvassa a JSON-fájlt, majd elindítja a szűrést. */
-fetch("data/movies.json", {cache:"no-cache"})
-  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-  .then(db => {
-    all = Object.values(db.movies);
-    // régi (csak Netflix) adatforma átalakítása, amíg az új update.py le nem fut
-    all.forEach(m => { for (const [c, a] of Object.entries(m.avail || {})) if ("on" in a || "first" in a) m.avail[c] = {netflix: a}; });
-    services = db.services || {netflix: {name: "Netflix", logo: null}};
-    since = db.since || {};
-    fillSvcBar();
-    updated = db.updated || null;
-    genreNames = db.genres || {};
-    initial = all.map(m => m.added || "").filter(Boolean).sort()[0] || "";
-    weekAgo = new Date(Date.now() - 7*864e5).toISOString().slice(0,10);
-    years = [...new Set(all.map(m => m.year).filter(Boolean))].sort();
-    fillYears();
-    fillGenres();
-    fillChips();
-    restoreFilters();      // gespeicherte Filter wieder einsetzen
-    loaded = true;
-    // Empfehlungen aus dem Repo (optional – Datei muss nicht existieren)
-    fetch("data/ajanlasok.json", {cache:"no-cache"})
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d && d.recs) { recsRemote = d.recs; apply(); } })
-      .catch(() => {});
-    apply();
-  })
-  .catch(() => {
-    $("#stats").textContent = "";
+/* ===== 10. ADATOK BETÖLTÉSE ==============================================
+   Fajtánként csak az első megnyitáskor töltjük le a fájlt, utána a memóriából
+   dolgozunk. A sorozatok fájlja az első v3-futásig még nem létezik. */
+function loadKind(k){
+  if (D[k]) return Promise.resolve(D[k]);
+  return fetch(KINDS[k].file, {cache: "no-cache"})
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(db => {
+      const all = Object.values(db[KINDS[k].key] || db.movies || db.items || {});
+      // régi (csak Netflix) adatforma átalakítása, ha még ilyen a fájl
+      all.forEach(m => { for (const [c, a] of Object.entries(m.avail || {})) if ("on" in a || "first" in a) m.avail[c] = {netflix: a}; });
+      return D[k] = {
+        all, updated: db.updated || null, genres: db.genres || {}, since: db.since || {},
+        services: db.services || {netflix: {name: "Netflix", logo: null}},
+        initial: all.map(m => m.added || "").filter(Boolean).sort()[0] || "",
+        years: [...new Set(all.map(m => m.year).filter(Boolean))].sort(),
+      };
+    });
+}
+function showKind(){
+  applyTexts();
+  loadKind(kind).then(() => {
+    applyTexts(); restoreFilters(); apply();
+  }).catch(() => {
+    applyTexts(); restoreFilters();
+    $("#stats").textContent = ""; $("#resetAll").textContent = t("resetAll")(0);
     $("#list").innerHTML = `<p class="error">${t("error")}</p>`;
   });
+}
+// ajánlások a repóból (nem kötelező, a fájl hiányozhat)
+fetch("data/ajanlasok.json", {cache: "no-cache"})
+  .then(r => r.ok ? r.json() : null)
+  .then(d => { if (d) { recsRemote = {movie: d.recs || {}, tv: d.recs_tv || {}}; apply(); } })
+  .catch(() => {});
+$("#stats").textContent = t("loading");
+showKind();
+// a másik fül adatait a háttérben előre betöltjük, így a váltás azonnali
+setTimeout(() => loadKind(kind === "movie" ? "tv" : "movie").then(fillSvcBar).catch(() => {}), 1500);
 </script>
 </body>
 </html>
