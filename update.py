@@ -335,10 +335,10 @@ def update_details(kind, cfg, db):
     # régi tételek, amiknek még nincs adatlapja (szereplők stb.): futásonként legfeljebb
     # DETAIL_BACKFILL darabot pótolunk, hogy egy futás ne tartson túl sokáig
     known = {id(e) for e in todo}
-    # pótolni kell: nincs még adatlapja, VAGY se magyar, se német leírása nincs, és a
-    # tartalék (pl. angol) leírást még nem néztük meg ("ov_x" mező hiányzik)
+    # pótolni kell: nincs még adatlapja, VAGY az angol leírást még nem kértük le
+    # ("ov_en" mező hiányzik – ez a v10 előtti adatlapoknál egyszer fordul elő)
     def needs(x):
-        return "cast" not in x or (not x.get("ov_hu") and not x.get("ov_de") and "ov_x" not in x)
+        return "cast" not in x or "ov_en" not in x
     backfill = [e for e in items.values() if id(e) not in known and needs(det.get(str(e["id"]), {}))]
     # sorrend: először a heti trendek (a trendlista sorrendjében), utána a legnépszerűbbek
     rank = {mid: i for i, mid in enumerate(db.get("trending") or [])}
@@ -380,25 +380,18 @@ def store_details(kind, x, d):
     """Az adatlaphoz szükséges adatok: magyar tartalom, 6 főszereplő,
     rendező (filmnél) / alkotó (sorozatnál), előzetes (YouTube-azonosító)."""
     x["ov_hu"] = d.get("overview") or None
-    # fordítások: minden nyelv leírása (ugyanabban a lekérésben jön, nem kell külön hívás)
+    # fordítások: a német és az angol leírás ugyanabban a lekérésben jön (nem kell külön hívás).
+    # Csak magyar, német és angol kell; az angolt minden címnél elmentjük
+    # (None = megnéztük, nincs angol leírás – így nem kérdezzük újra).
     tr = {}
     for t in (d.get("translations") or {}).get("translations") or []:
         ov = ((t.get("data") or {}).get("overview") or "").strip()
-        if ov and t.get("iso_639_1") not in tr:
-            tr[t.get("iso_639_1")] = ov
+        if ov and t.get("iso_639_1") in ("de", "en") and t["iso_639_1"] not in tr:
+            tr[t["iso_639_1"]] = ov
     if not x.get("ov_de") and tr.get("de"):
         x["ov_de"] = tr["de"]
-    # tartalék leírás, ha se magyarul, se németül nincs: angol, különben az eredeti
-    # nyelv, különben bármelyik. "ov_x" = a szöveg, "ov_xl" = a nyelv kódja.
-    # Üres "ov_x" = megnéztük, egyik nyelven sincs leírás (így nem kérdezzük újra).
-    x.pop("ov_x", None); x.pop("ov_xl", None)
-    if not x["ov_hu"] and not x.get("ov_de"):
-        for code in ["en", d.get("original_language")] + list(tr):
-            if code and tr.get(code):
-                x["ov_x"], x["ov_xl"] = tr[code], code
-                break
-        else:
-            x["ov_x"] = ""
+    x["ov_en"] = tr.get("en")
+    x.pop("ov_x", None); x.pop("ov_xl", None)   # a v9 tartalék mezői már nem kellenek
     credits = d.get("credits") or {}
     x["cast"] = [c["name"] for c in (credits.get("cast") or [])[:6]]
     if kind == "movie":

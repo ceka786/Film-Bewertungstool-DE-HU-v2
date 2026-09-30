@@ -199,7 +199,11 @@ details.seasons[open] summary::after{transform:translateY(1px) rotate(-135deg)}
 /* adatlap-részek (lista, trend, kocka) */
 .sh-sec{font-size:15px;line-height:1.5}
 .sh-sec h3{font-size:12px;font-weight:700;color:var(--muted);margin:0}
-.sh-sec .ovl{font-weight:400}
+.sh-sec h3{display:flex;align-items:center;gap:8px;min-height:24px}
+.ovsw{display:inline-flex;gap:3px}
+.ovsw button{border:1px solid var(--line);background:none;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;transition:background-color .18s var(--ease),color .18s var(--ease)}
+.ovsw button[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.ovsw button:disabled{opacity:.35;cursor:default}
 .sh-title{font-family:var(--display);font-size:22px;font-weight:800;line-height:1.1;margin:0;text-wrap:balance}
 .trdet .sh-title{margin-right:40px}
 .sh-top{display:grid;grid-template-columns:100px 1fr;gap:14px}
@@ -518,7 +522,7 @@ const T = {
     ch_only:"Nur", ch_not:"Nicht", svcN:(a,b)=>`${a} von ${b} Diensten`, ySince:y=>`ab ${y}`, yUntil:y=>`bis ${y}`,
     chipDel:l=>`Filter „${l}“ entfernen`, sortBy:l=>`Sortiert nach: ${l}.`,
     th_auto:"Auto", th_light:"Hell", th_dark:"Dunkel", themeT:n=>`Darstellung: ${n}. Tippen zum Wechseln.`,
-    th_name:{auto:"automatisch (wie das Gerät)", light:"hell", dark:"dunkel"}, sortOpen:"Sortierung und Seitengröße", ovIn:l=>`(auf ${l})`,
+    th_name:{auto:"automatisch (wie das Gerät)", light:"hell", dark:"dunkel"}, sortOpen:"Sortierung und Seitengröße", ovLangT:"Sprache der Handlung",
     locale:"de-DE" },
   hu: {
     h1:"Mit nézzek ma?", sub:"Filmek és sorozatok a Netflixen, Prime Videón, Disney+-on, HBO Maxon és Apple TV-n, Németországban és Magyarországon.",
@@ -572,7 +576,7 @@ const T = {
     ch_only:"Csak", ch_not:"Nem", svcN:(a,b)=>`${a} / ${b} szolgáltató`, ySince:y=>`${y} óta`, yUntil:y=>`${y}-ig`,
     chipDel:l=>`„${l}” szűrő törlése`, sortBy:l=>`Rendezés: ${l.toLowerCase()}.`,
     th_auto:"Auto", th_light:"Nappal", th_dark:"Éjjel", themeT:n=>`Megjelenés: ${n}. Koppints a váltáshoz.`,
-    th_name:{auto:"automatikus (mint a telefon)", light:"nappali", dark:"éjszakai"}, sortOpen:"Rendezés és oldalméret", ovIn:l=>`(${l} nyelvű)`,
+    th_name:{auto:"automatikus (mint a telefon)", light:"nappali", dark:"éjszakai"}, sortOpen:"Rendezés és oldalméret", ovLangT:"A leírás nyelve",
     locale:"hu-HU" }
 };
 
@@ -1261,18 +1265,22 @@ function detHead(m, poster = true){
   if (!poster) return info;
   return `<div class="sh-top" data-id="${m.id}">${m.poster ? `<img alt="" src="https://image.tmdb.org/t/p/w342${m.poster}">` : `<div class="tp"></div>`}${info}</div>`;
 }
-/* Történet: a választott nyelven; ha nincs, a másikon (HU/DE); ha egyiken sincs,
-   a tartalék (angol vagy az eredeti nyelv). Ha nem a választott nyelven jön,
-   kis megjegyzés mutatja, milyen nyelvű. */
+/* Történet: HU / DE / EN kapcsolóval. Sorrend: amit kézzel választottál (ha van
+   ilyen nyelvű leírás), különben az oldal nyelve → angol → a harmadik nyelv.
+   A kézi választást a böngésző megjegyzi ("ovLang"). */
+let ovPref = load("ovLang", null);
 function detBody(m, x){
-  let ov = t("loadingDet"), ol = null;
+  let head = t("overview"), text = t("loadingDet");
   if (!x.loading) {
-    const opts = lang === "hu" ? [["hu", x.ov_hu], ["de", x.ov_de]] : [["de", x.ov_de], ["hu", x.ov_hu]];
-    const hit = opts.concat([[x.ov_xl, x.ov_x]]).find(([c, v]) => v);
-    if (hit) { ov = hit[1]; if (hit[0] !== lang) ol = hit[0]; } else ov = t("noOverview");
+    const have = {hu: x.ov_hu, de: x.ov_de, en: x.ov_en};
+    const order = [ovPref, lang, "en", lang === "hu" ? "de" : "hu"];
+    const pick = order.find(c => c && have[c]);
+    text = pick ? have[pick] : t("noOverview");
+    if (pick) head += `<span class="ovsw" role="group" aria-label="${t("ovLangT")}">` + ["hu", "de", "en"].map(c =>
+      `<button type="button" data-ol="${c}" aria-pressed="${c === pick}" title="${esc(dn("language", c))}"${have[c] ? "" : " disabled"}>${c.toUpperCase()}</button>`).join("") + `</span>`;
   }
   return `
-    <div class="sh-sec"><h3>${t("overview")}${ol ? ` <span class="ovl">${esc(t("ovIn")(dn("language", ol)))}</span>` : ""}</h3>${esc(ov)}</div>
+    <div class="sh-sec"><h3>${head}</h3>${esc(text)}</div>
     ${x.crew && x.crew.length ? `<div class="sh-sec"><h3>${t(kind === "tv" ? "creator" : "director")}</h3>${esc(x.crew.join(", "))}</div>` : ""}
     ${x.cast && x.cast.length ? `<div class="sh-sec"><h3>${t("cast")}</h3>${esc(x.cast.join(", "))}</div>` : ""}`;
 }
@@ -1294,6 +1302,18 @@ $(".sheet-x").addEventListener("click", hideSheet);
 $("#sheetBody").addEventListener("click", e => {
   if (e.target.closest(".again")) { rollDice(); return; }
   const btn = e.target.closest("button.ib"); if (btn && sheetM) toggleMark(String(sheetM.id), btn);
+});
+/* a leírás nyelvének váltása (HU/DE/EN): megjegyezzük, és minden nyitott adatlap átvált */
+document.addEventListener("click", e => {
+  const b = e.target.closest(".ovsw button[data-ol]"); if (!b || b.disabled) return;
+  e.stopPropagation();
+  ovPref = b.dataset.ol; store("ovLang", ovPref);
+  if (listOpen) {
+    const el = $(`#list .exp[data-for="${listOpen}"]`), m = cur().byId[listOpen], k = kind;
+    if (el && m) loadDetails(k, listOpen).then(x => { if (el.isConnected) el.firstElementChild.innerHTML = expHTML(m, x); });
+  }
+  if (trOpen) refreshTr();
+  if (sheetM) loadDetails(kind, sheetM.id).then(renderSheet);
 });
 /* ✓ láttam / megnézem / ajánlom gomb az adatlapon (🎲 vagy trend-panel):
    a listába ment, és mindenhol frissít, ahol a cím épp látszik */
