@@ -173,6 +173,20 @@ details.panel[open] summary::after{content:" ▴"}
 .sh-links a,.sh-links button{font:inherit;font-size:14px;text-decoration:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:8px 12px;cursor:pointer}
 .sh-links .yt{background:#C4302B;border-color:#C4302B;color:#fff;font-weight:600}
 .sh-links .again{background:var(--ink);border-color:var(--ink);color:var(--bg);font-weight:600}
+/* ===== 5d. LENYÍLÓ ADATLAP (a lista sora alatt és a trendsor alatt) ======= */
+.film{cursor:pointer}
+.film.open{background:var(--surface);border-bottom-color:transparent;border-radius:10px 10px 0 0}
+.exp{background:var(--surface);border-bottom:1px solid var(--line);border-radius:0 0 10px 10px;padding:0 12px 14px 74px;animation:expin .18s ease-out}
+.exp .sh-sec:first-child{margin-top:0}
+.exp .sh-links{margin-top:12px}
+@keyframes expin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@media (max-width:420px){.exp{padding-left:12px}}
+.trc.sel .tp{outline:3px solid var(--lamp);outline-offset:2px}
+.trdet{position:relative;margin:8px 16px 0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;animation:expin .18s ease-out}
+.trdet .sheet-x{position:absolute;top:10px;right:10px;float:none}
+.trdet .sh-top{margin-top:0;padding-right:40px}
+.trdet .sh-top>img,.trdet .sh-top>.tp{width:90px;height:135px}
+@media (prefers-reduced-motion:reduce){.exp,.trdet{animation:none}}
 #dice{font:inherit;font-size:20px;width:42px;height:40px;border:1px solid var(--line);background:var(--surface);border-radius:10px;cursor:pointer;line-height:1}
 .statleft{display:flex;gap:8px;align-items:center}
 /* ===== 6. LÁBLÉC ======================================================== */
@@ -204,6 +218,8 @@ footer a{color:inherit}
     </div>
   </div>
   <div class="trrow" id="trRow"></div>
+  <!-- a kattintott trend adatlapja ide nyílik le, a teljes sor alá -->
+  <div class="trdet" id="trDet" hidden></div>
 </section>
 
 <div class="controls">
@@ -705,8 +721,10 @@ function apply(){
 /* ===== 7b. MEGJELENÍTÉS OLDALANKÉNT ======================================
    pageSize = 10/25/50/100 → egyszerre egy oldal, lapozóval
    pageSize = "all"        → minden, görgetésre töltődik (a telefon miatt adagokban) */
+let listOpen = null;   // a listában épp lenyitott cím azonosítója (szövegként)
+let trOpen = null;     // a trendsor alatt nyitott cím: {k: fajta, id}
 function render(){
-  shown = 0;
+  shown = 0; listOpen = null;   // újrarajzoláskor a lenyitott adatlap becsukódik
   $("#list").innerHTML = view.length ? "" : `<p class="empty">${t("empty")}</p>`;
   if (pageSize === "all") { $("#pagerTop").innerHTML = $("#pagerBot").innerHTML = ""; renderMore(); return; }
   const size = +pageSize, pages = Math.max(1, Math.ceil(view.length / size));
@@ -773,7 +791,7 @@ function card(m){
   const link = m.imdb_id ? `https://www.imdb.com/title/${m.imdb_id}/` : `https://www.themoviedb.org/${kind}/${m.id}`;
   const w = !!seen[m.id], wl = !!watch[m.id], rc = !!(recs[m.id] || recsRemote[kind][m.id]), hd = !!hidden[m.id];
   const ts = kind === "tv" ? tmdbScore(m) : null;
-  return `<div class="film${m._on ? "" : " gone"}${w ? " watched" : ""}${hd ? " hid" : ""}" data-id="${m.id}">
+  return `<div class="film${m._on ? "" : " gone"}${w ? " watched" : ""}${hd ? " hid" : ""}${listOpen === String(m.id) ? " open" : ""}" data-id="${m.id}">
     <a class="pw" href="${link}" target="_blank" rel="noopener" data-open="${m.id}">${m.poster ? `<img class="poster" loading="lazy" alt="" src="${IMG}${m.poster}">` : `<div class="poster"></div>`}${w ? `<span class="tick" aria-hidden="true">✓</span>` : ""}</a>
     <div>
       <a class="title" href="${link}" target="_blank" rel="noopener" data-open="${m.id}">${esc(ttl(m))}</a>
@@ -850,10 +868,17 @@ $("#langChips").parentElement.addEventListener("click", e => {
 $("#resetPicks").addEventListener("click", () => { picks = {lang: {}, country: {}}; store("picks", picks); fillChips(); apply(); });
 // gombok a sorokban: ✕ elrejtés, ⭐ megnézem, 🍽 ajánlom, ✓ láttam
 $("#list").addEventListener("click", e => {
-  // poszter vagy cím: adatlap (új lapon IMDb csak hosszú nyomással / középső gombbal)
+  if (e.target.closest(".exp")) return;                        // a lenyílt részben csak a linkek működnek
   const op = e.target.closest("[data-open]");
-  if (op && !e.ctrlKey && !e.metaKey) { e.preventDefault(); openSheet(cur().byId[op.dataset.open]); return; }
-  const btn = e.target.closest(".hide, .star, .rec, .seen"); if (!btn) return;
+  if (op && (e.ctrlKey || e.metaKey)) return;                  // Ctrl/Cmd + kattintás: IMDb új lapon
+  const btn = e.target.closest(".hide, .star, .rec, .seen");
+  if (!btn) {
+    // bárhol a sorra kattintva lenyílik / becsukódik az adatlap
+    // (kivéve az évadlistát és az egyéb gombokat/linkeket)
+    if (e.target.closest("details, button, a:not([data-open])")) return;
+    const r = e.target.closest(".film"); if (!r) return;
+    e.preventDefault(); toggleExp(r); return;
+  }
   const row = btn.closest(".film"), id = row.dataset.id;
   const name = btn.classList.contains("hide") ? "hidden" : btn.classList.contains("star") ? "watch"
              : btn.classList.contains("rec") ? "recs" : "seen";
@@ -865,12 +890,14 @@ $("#list").addEventListener("click", e => {
     // így a lista nem ugrik vissza a tetejére (ha az elrejtettek látszanak,
     // a sor marad, csak halványabb lesz – lent újrarajzoljuk)
     view = view.filter(m => String(m.id) !== id); shown = Math.max(0, shown - 1);
+    if (listOpen === id) closeExp();
     row.remove(); updateStats();
     if (!view.length) $("#list").innerHTML = `<p class="empty">${t("empty")}</p>`;
     return;
   }
   const m = cur().byId[id];
   if (m) row.outerHTML = card(m);   // csak ezt az egy sort rajzoljuk újra
+  if (trOpen && trOpen.id === id) refreshTr();                 // a trend-adatlap gombjai is frissülnek
 });
 // listák mentése fájlba: filmek a gyökérben (régi formátum), sorozatok a "tv" alatt
 $("#exp").addEventListener("click", () => {
@@ -912,6 +939,8 @@ function renderTrends(){
   const list = d.trending.map(id => d.byId[id])
     .filter(m => m && Object.values(m.avail[trC] || {}).some(a => a.on)).slice(0, 20);
   box.hidden = !list.length;
+  // a nyitott trend-adatlap marad, ha a cím még a sorban van; különben becsukódik
+  if (trOpen && (trOpen.k !== kind || !list.some(m => String(m.id) === trOpen.id))) closeTr();
   $("#trRow").innerHTML = list.map(m => {
     const r = m.r || {}, c = combo(m);
     const logos = Object.entries(m.avail[trC]).filter(([, a]) => a.on)
@@ -923,9 +952,35 @@ function renderTrends(){
       <div class="ts">IMDb ${r.imdb != null ? r.imdb.toFixed(1) : "–"} · Ø ${c ?? "–"}</div>
       <div class="tl">${logos}</div></button>`;
   }).join("");
+  markTr(); if (trOpen) refreshTr();   // nyelvváltáskor a nyitott adatlap is átvált
 }
 $$(".trsw button").forEach(b => b.addEventListener("click", () => { trC = b.dataset.tc; store("trC", trC); renderTrends(); }));
-$("#trRow").addEventListener("click", e => { const b = e.target.closest("[data-open]"); if (b) openSheet(cur().byId[b.dataset.open]); });
+$("#trRow").addEventListener("click", e => { const b = e.target.closest("[data-open]"); if (b) openTr(b.dataset.open); });
+$("#trDet").addEventListener("click", e => {
+  if (e.target.closest(".sheet-x")) { closeTr(); return; }
+  const btn = e.target.closest(".star, .rec, .seen"); if (btn && trOpen) toggleMark(trOpen.id, btn);
+});
+/* Trend-adatlap: a teljes trendsor alatt nyílik le. Másik trendre kattintva
+   a tartalma cserélődik, ugyanarra (vagy a ✕-re) kattintva becsukódik. */
+function openTr(id){
+  if (trOpen && trOpen.k === kind && trOpen.id === id) { closeTr(); return; }
+  if (!cur().byId[id]) return;
+  trOpen = {k: kind, id};
+  markTr(); $("#trDet").hidden = false; $("#trDet").innerHTML = ""; refreshTr();
+  $("#trDet").scrollIntoView({block: "nearest", behavior: "smooth"});
+}
+function refreshTr(){
+  const m = cur() && cur().byId[trOpen.id]; if (!m) { closeTr(); return; }
+  m._on = isAvailable(m);
+  const draw = x => $("#trDet").innerHTML =
+    `<button class="sheet-x" type="button" title="${t("close")}" aria-label="${t("close")}">✕</button>`
+    + detHead(m) + detBody(m, x) + seasonsBlock(m) + detLinks(m, x);
+  if (!$("#trDet").innerHTML) draw({loading: true});
+  const {k, id} = trOpen;
+  loadDetails(k, id).then(x => { if (trOpen && trOpen.id === id && kind === k) draw(x); });
+}
+function closeTr(){ trOpen = null; $("#trDet").hidden = true; $("#trDet").innerHTML = ""; markTr(); }
+function markTr(){ $$("#trRow .trc").forEach(b => b.classList.toggle("sel", !!trOpen && b.dataset.open === trOpen.id)); }
 
 /* ===== 9c. ADATLAP ========================================================
    Az adatlapok 100 kis fájlban vannak (data/details/<fajta>/00.json … 99.json,
@@ -946,14 +1001,17 @@ function openSheet(m, fromDice = false){
   loadDetails(k, m.id).then(x => { if (sheetM === m && kind === k) renderSheet(x); });
 }
 function closeSheet(){ $("#sheet").hidden = true; document.body.style.overflow = ""; sheetM = null; }
-function renderSheet(x){
-  const m = sheetM, r = m.r || {}, {seen, watch, recs} = L[kind];
-  const link = m.imdb_id ? `https://www.imdb.com/title/${m.imdb_id}/` : null;
+/* Az adatlap három része – a felugró ablak (🎲), a trend-panel és a lista
+   lenyíló része ugyanezekből épül:
+   detHead = poszter, cím, pontszámok, zászlók, gombok (a lista sorában ez már látszik)
+   detBody = történet, rendező/alkotó, szereplők
+   detLinks = előzetes, IMDb, TMDB (+ a kockánál „Másikat”) */
+function detHead(m){
+  const r = m.r || {}, {seen, watch, recs} = L[kind];
   const genres = (m.genres || []).map(id => { const n = cur().genres[id]; return n ? (n[lang] || n.de) : null; }).filter(Boolean);
-  const ov = x.loading ? t("loadingDet") : ((lang === "hu" ? (x.ov_hu || x.ov_de) : (x.ov_de || x.ov_hu)) || t("noOverview"));
   const ts = kind === "tv" ? tmdbScore(m) : null;
   const w = !!seen[m.id], wl = !!watch[m.id], rc = !!recs[m.id];
-  $("#sheetBody").innerHTML = `
+  return `
     <div class="sh-top" data-id="${m.id}">
       ${m.poster ? `<img alt="" src="https://image.tmdb.org/t/p/w342${m.poster}">` : `<div class="tp"></div>`}
       <div>
@@ -964,17 +1022,28 @@ function renderSheet(x){
         <div class="flags">${flag(m, "DE", "🇩🇪")}${flag(m, "HU", "🇭🇺")}</div>
         <div class="flags"><button class="seen" aria-pressed="${w}">${w ? "✓ " : ""}${t("seen")}</button><button class="star" aria-pressed="${wl}">${wl ? "★ " : "☆ "}${t("watch")}</button><button class="rec" aria-pressed="${rc}">${t("rec")}</button></div>
       </div>
-    </div>
+    </div>`;
+}
+function detBody(m, x){
+  const ov = x.loading ? t("loadingDet") : ((lang === "hu" ? (x.ov_hu || x.ov_de) : (x.ov_de || x.ov_hu)) || t("noOverview"));
+  return `
     <div class="sh-sec"><h3>${t("overview")}</h3>${esc(ov)}</div>
     ${x.crew && x.crew.length ? `<div class="sh-sec"><h3>${t(kind === "tv" ? "creator" : "director")}</h3>${esc(x.crew.join(", "))}</div>` : ""}
-    ${x.cast && x.cast.length ? `<div class="sh-sec"><h3>${t("cast")}</h3>${esc(x.cast.join(", "))}</div>` : ""}
-    ${seasonsBlock(m)}
+    ${x.cast && x.cast.length ? `<div class="sh-sec"><h3>${t("cast")}</h3>${esc(x.cast.join(", "))}</div>` : ""}`;
+}
+function detLinks(m, x, dice = false){
+  const link = m.imdb_id ? `https://www.imdb.com/title/${m.imdb_id}/` : null;
+  return `
     <div class="sh-links">
-      ${sheetDice ? `<button class="again" type="button">${t("diceAgain")}</button>` : ""}
+      ${dice ? `<button class="again" type="button">${t("diceAgain")}</button>` : ""}
       ${x.yt ? `<a class="yt" href="https://www.youtube.com/watch?v=${esc(x.yt)}" target="_blank" rel="noopener">${t("trailer")}</a>` : ""}
       ${link ? `<a href="${link}" target="_blank" rel="noopener">IMDb</a>` : ""}
       <a href="https://www.themoviedb.org/${kind}/${m.id}" target="_blank" rel="noopener">TMDB</a>
     </div>`;
+}
+function renderSheet(x){
+  const m = sheetM;
+  $("#sheetBody").innerHTML = detHead(m) + detBody(m, x) + seasonsBlock(m) + detLinks(m, x, sheetDice);
   $(".sheet-x").title = t("close"); $(".sheet-x").setAttribute("aria-label", t("close"));
 }
 $(".sheet-bg").addEventListener("click", closeSheet);
@@ -982,14 +1051,44 @@ $(".sheet-x").addEventListener("click", closeSheet);
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#sheet").hidden) closeSheet(); });
 $("#sheetBody").addEventListener("click", e => {
   if (e.target.closest(".again")) { rollDice(); return; }
-  const btn = e.target.closest(".star, .rec, .seen"); if (!btn || !sheetM) return;
-  const id = String(sheetM.id), name = btn.classList.contains("star") ? "watch" : btn.classList.contains("rec") ? "recs" : "seen";
+  const btn = e.target.closest(".star, .rec, .seen"); if (btn && sheetM) toggleMark(String(sheetM.id), btn);
+});
+/* ✓ láttam / ☆ megnézem / ajánlom gomb az adatlapon (felugró vagy trend-panel):
+   a listába ment, és mindenhol frissít, ahol a cím épp látszik */
+function toggleMark(id, btn){
+  const name = btn.classList.contains("star") ? "watch" : btn.classList.contains("rec") ? "recs" : "seen";
   const obj = L[kind][name];
   if (obj[id]) delete obj[id]; else obj[id] = today();
   saveList(kind, name);
-  loadDetails(kind, id).then(renderSheet);
-  const row = $(`#list .film[data-id="${id}"]`); if (row) row.outerHTML = card(sheetM);   // a listában is frissül
-});
+  const m = cur().byId[id]; if (!m) return;
+  const row = $(`#list .film[data-id="${id}"]`); if (row) row.outerHTML = card(m);
+  if (sheetM && String(sheetM.id) === id) loadDetails(kind, id).then(renderSheet);
+  if (trOpen && trOpen.id === id) refreshTr();
+}
+
+/* ===== 9c2. LENYÍLÓ ADATLAP A LISTÁBAN ====================================
+   A sorra kattintva alatta lenyílik: történet, rendező, szereplők, linkek.
+   Egyszerre csak egy lehet nyitva; újabb kattintásra becsukódik. */
+function expHTML(m, x){ return detBody(m, x) + detLinks(m, x); }
+function closeExp(){
+  const row = listOpen && $(`#list .film[data-id="${listOpen}"]`);
+  if (row) { row.classList.remove("open"); const n = row.nextElementSibling; if (n && n.classList.contains("exp")) n.remove(); }
+  listOpen = null;
+}
+function toggleExp(row){
+  const id = row.dataset.id, top = row.getBoundingClientRect().top, same = listOpen === id;
+  closeExp();
+  if (!same) {
+    const m = cur().byId[id]; if (!m) return;
+    listOpen = id; row.classList.add("open");
+    row.insertAdjacentHTML("afterend", `<div class="exp" data-for="${id}">${expHTML(m, {loading: true})}</div>`);
+    const k = kind;
+    loadDetails(k, id).then(x => { const el = $(`#list .exp[data-for="${id}"]`); if (el && kind === k) el.innerHTML = expHTML(m, x); });
+  }
+  // ha fölötte egy másik adatlap csukódott be, a kattintott sor ne ugorjon el
+  const d = row.getBoundingClientRect().top - top;
+  if (d) window.scrollBy({top: d, behavior: "instant"});
+}
 
 /* ===== 9d. 🎲 VÉLETLEN AJÁNLÁS ===========================================
    A mostani szűrők eredményéből: elérhető, még nem látott, nem elrejtett.
