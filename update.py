@@ -27,6 +27,10 @@ OMDB_KEY = os.environ.get("OMDB_API_KEY", "")    # opcionális: enélkül nincs 
 OMDB_LIMIT = int(os.environ.get("OMDB_LIMIT", "950"))  # ingyenes keret: 1000/nap
 RATING_MAX_AGE_DAYS = 45      # ennyi nap után frissítjük újra egy értékelést
 TV_DETAIL_MAX_AGE_DAYS = 7    # futó sorozat adatlapját (évadok!) ennyi naponként frissítjük
+DETAIL_DIR = "data/details"   # az adatlapok (tartalom, szereplők, előzetes) külön fájlokban
+SHARDS = 100                  # ...100 kis fájlra bontva, hogy a weboldal csak a kellőt töltse le
+DETAIL_BACKFILL = 6000        # régi tételeknél futásonként legfeljebb ennyi adatlapot pótolunk
+TRENDING_PAGES = 10           # heti trendlista: 10 oldal × 20 = 200 cím
 REGIONS = ["DE", "HU"]        # országkódok: Németország, Magyarország
 TODAY = date.today().isoformat()  # mai dátum "2026-09-26" formában
 
@@ -201,20 +205,37 @@ def migrate(db):
                     since[key] = a["first"]
 
 
-def load_db(cfg):
-    """Betölti a tegnapi fájlt, vagy üreset ad, ha még nincs."""
+def load_db(kind, cfg):
+    """Betölti a tegnapi fájlt, vagy üreset ad, ha még nincs.
+    Az adatlapokat (data/details/<fajta>/00.json … 99.json) is betölti a "_det" mezőbe."""
     db = {cfg["key"]: {}}
     if os.path.exists(cfg["file"]):
         with open(cfg["file"], encoding="utf-8") as f:
             db = json.load(f)
-    db["_key"] = cfg["key"]                # segédmező, mentéskor kivesszük
+    db["_key"] = cfg["key"]                # segédmezők (aláhúzással), mentéskor kivesszük
+    db["_det"] = {}
+    for n in range(SHARDS):
+        path = f"{DETAIL_DIR}/{kind}/{n:02d}.json"
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                db["_det"].update(json.load(f))
     migrate(db)
     db.setdefault("since", {})
     return db
 
 
-def save_db(cfg, db):
+def save_db(kind, cfg, db):
     db.pop("_key", None)
+    # adatlapok: az azonosító utolsó két számjegye szerint 100 fájlba
+    # (pl. 1399 -> 99.json), így a weboldalnak egyszerre csak egy kis fájl kell
+    det = db.pop("_det", {})
+    shards = {}
+    for mid, d in det.items():
+        shards.setdefault(int(mid) % SHARDS, {})[mid] = d
+    os.makedirs(f"{DETAIL_DIR}/{kind}", exist_ok=True)
+    for n in range(SHARDS):
+        with open(f"{DETAIL_DIR}/{kind}/{n:02d}.json", "w", encoding="utf-8") as f:
+            json.dump(shards.get(n, {}), f, ensure_ascii=False, separators=(",", ":"))
     db["updated"] = datetime.now().isoformat(timespec="minutes")  # "utoljára frissítve"
     db["regions"] = REGIONS
     with open(cfg["file"], "w", encoding="utf-8") as f:
@@ -273,6 +294,9 @@ def update_availability(kind, cfg, db):
                 e["poster"] = m.get("poster_path") or e.get("poster")
                 e["genres"] = m.get("genre_ids") or e.get("genres") or []   # műfaj-azonosítók
                 e["lang"] = m.get("original_language") or e.get("lang")     # eredeti nyelv
+                e["pop"] = round(m.get("popularity") or 0, 1)               # TMDB-népszerűség (világszintű)
+                if m.get("overview"):                                       # német tartalom (a lista németül jön)
+                    db["_det"].setdefault(mid, {})["ov_de"] = m["overview"]
                 if kind == "tv":
                     # a sorozatoknál a TMDB saját pontszámát is eltesszük (ingyen jön)
                     e["tmdb"] = m.get("vote_average")
@@ -306,11 +330,20 @@ def update_details(kind, cfg, db):
         cutoff = (date.today() - timedelta(days=TV_DETAIL_MAX_AGE_DAYS)).isoformat()
         todo = [e for e in items.values()
                 if not e.get("d_date") or (e.get("status") == "run" and e["d_date"] < cutoff)]
-    print(f"{cfg['label']}: részletek lekérése {len(todo)} tételhez …")
+    det = db["_det"]
+    # régi tételek, amiknek még nincs adatlapja (szereplők stb.): futásonként legfeljebb
+    # DETAIL_BACKFILL darabot pótolunk, hogy egy futás ne tartson túl sokáig
+    known = {id(e) for e in todo}
+    backfill = [e for e in items.values() if id(e) not in known and "cast" not in det.get(str(e["id"]), {})]
+    print(f"{cfg['label']}: részletek lekérése {len(todo)} tételhez"
+          f" + {min(len(backfill), DETAIL_BACKFILL)} adatlap pótlása (hátra még: {max(0, len(backfill) - DETAIL_BACKFILL)}) …")
+    todo += backfill[:DETAIL_BACKFILL]
     for e in todo:
         try:
-            # append_to_response: két lekérés egyben (adatlap + külső azonosítók)
-            d = tmdb(f"/{cfg['tmdb']}/{e['id']}", language="hu-HU", append_to_response="external_ids")
+            # append_to_response: több lekérés egyben (adatlap + külső azonosítók + szereplők + videók)
+            d = tmdb(f"/{cfg['tmdb']}/{e['id']}", language="hu-HU",
+                     append_to_response="external_ids,credits,videos", include_video_language="hu,de,en")
+            store_details(kind, det.setdefault(str(e["id"]), {}), d)
             e["title_hu"] = d.get(cfg["title"]) or e.get("orig")
             pc = d.get("production_countries") or []
             # fő ország: elsőként az origin_country, ha nincs, az első gyártó ország
@@ -333,6 +366,38 @@ def update_details(kind, cfg, db):
         except Exception as ex:
             print(f"  {e['id']}: {ex}")   # egy hibás tétel nem állítja meg a futást
         time.sleep(0.03)
+
+
+def store_details(kind, x, d):
+    """Az adatlaphoz szükséges adatok: magyar tartalom, 6 főszereplő,
+    rendező (filmnél) / alkotó (sorozatnál), előzetes (YouTube-azonosító)."""
+    x["ov_hu"] = d.get("overview") or None
+    credits = d.get("credits") or {}
+    x["cast"] = [c["name"] for c in (credits.get("cast") or [])[:6]]
+    if kind == "movie":
+        x["crew"] = [c["name"] for c in credits.get("crew") or [] if c.get("job") == "Director"][:3]
+    else:
+        x["crew"] = [c["name"] for c in d.get("created_by") or []][:3]
+    # előzetes: YouTube, "Trailer" (vagy "Teaser"), magyar > német > angol sorrendben
+    vids = [v for v in (d.get("videos") or {}).get("results") or [] if v.get("site") == "YouTube"]
+    rank = lambda v: ({"Trailer": 0, "Teaser": 1}.get(v.get("type"), 9), {"hu": 0, "de": 1, "en": 2}.get(v.get("iso_639_1"), 9))
+    vids = sorted([v for v in vids if v.get("type") in ("Trailer", "Teaser")], key=rank)
+    x["yt"] = vids[0]["key"] if vids else None
+
+
+def update_trending(cfg, db):
+    """A TMDB heti trendlistája (világszintű sorrend). A weboldal ebből csak azt
+    mutatja, ami az adott országban elérhető."""
+    ids = []
+    try:
+        for page in range(1, TRENDING_PAGES + 1):
+            for m in tmdb(f"/trending/{cfg['tmdb']}/week", page=page).get("results", []):
+                if str(m["id"]) not in ids:
+                    ids.append(str(m["id"]))
+        db["trending"] = ids
+        print(f"{cfg['label']}: heti trendlista {len(ids)} cím, ebből a katalógusban {sum(1 for i in ids if i in db[cfg['key']])}.")
+    except Exception as ex:
+        print(f"Trendek ({cfg['label']}): {ex} – a tegnapi lista marad")
 
 
 # --- 3. LÉPÉS: értékelések ---------------------------------------------------
@@ -393,16 +458,17 @@ def update_genres(cfg, db):
 
 def main():
     os.makedirs("data", exist_ok=True)     # a data mappa létrehozása, ha nincs
-    dbs = {kind: load_db(cfg) for kind, cfg in KINDS.items()}
+    dbs = {kind: load_db(kind, cfg) for kind, cfg in KINDS.items()}
     for kind, cfg in KINDS.items():
         print(f"===== {cfg['label']} =====")
         update_availability(kind, cfg, dbs[kind])
         update_details(kind, cfg, dbs[kind])
         update_genres(cfg, dbs[kind])
+        update_trending(cfg, dbs[kind])
     print("===== Értékelések =====")
     update_ratings(dbs)
     for kind, cfg in KINDS.items():
-        save_db(cfg, dbs[kind])
+        save_db(kind, cfg, dbs[kind])
 
 
 # Ez a sor csak akkor indítja a main()-t, ha a fájlt közvetlenül futtatjuk.

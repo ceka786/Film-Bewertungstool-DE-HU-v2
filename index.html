@@ -141,8 +141,43 @@ details.panel[open] summary::after{content:" ▴"}
 .chip[data-s="1"]{border-color:#2E9E5B;background:#2E9E5B;color:#fff}
 .chip[data-s="2"]{border-color:#C0392B;background:#C0392B;color:#fff}
 .plabel{font-size:13px;color:var(--muted);margin-top:8px}
+/* ===== 5b. TRENDSÁV (a cím alatt, vízszintesen görgethető) =============== */
+.trends{max-width:760px;margin:0 auto;padding:4px 0 12px}
+.trhead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 16px 8px}
+.trhead h2{font-size:20px;font-weight:800;margin:0;letter-spacing:-.01em}
+.trsw{display:flex;border:1px solid var(--ink);border-radius:999px;overflow:hidden}
+.trsw button{font:inherit;font-size:14px;border:0;background:none;color:var(--ink);padding:5px 12px;cursor:pointer}
+.trsw button[aria-pressed=true]{background:var(--ink);color:var(--bg);font-weight:600}
+.trrow{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:16px;padding:0 16px 6px;scrollbar-width:none}
+.trrow::-webkit-scrollbar{display:none}
+.trc{flex:0 0 118px;scroll-snap-align:start;cursor:pointer;background:none;border:0;padding:0;text-align:left;font:inherit;color:inherit}
+.trc img.tp,.trc .tp{width:118px;height:177px;border-radius:8px;object-fit:cover;display:block;background:var(--line)}
+.trc .tt{font-weight:600;font-size:14px;line-height:1.2;margin-top:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.trc .ts{font-size:12px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+.trc .tl img{width:16px;height:16px;border-radius:3px;margin:3px 3px 0 0}
+/* ===== 5c. ADATLAP (felugró ablak) ======================================= */
+.sheet{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.sheet[hidden]{display:none}
+.sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+.sheet-box{position:relative;background:var(--bg);width:100%;max-width:640px;max-height:92vh;overflow-y:auto;border-radius:16px 16px 0 0;padding:18px 16px 28px}
+@media (min-width:700px){.sheet{align-items:center}.sheet-box{border-radius:16px}}
+.sheet-x{position:sticky;top:0;float:right;font:inherit;font-size:18px;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.sh-top{display:grid;grid-template-columns:110px 1fr;gap:14px;margin-top:6px}
+.sh-top>img,.sh-top>.tp{width:110px;height:165px;border-radius:8px;object-fit:cover;background:var(--line)}
+.sh-title{font-size:22px;font-weight:800;line-height:1.1;margin:0 0 4px}
+.sh-scores{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0;font-variant-numeric:tabular-nums;font-size:14px}
+.sh-scores b{font-size:20px}
+.sh-sec{margin-top:14px;font-size:15px;line-height:1.5}
+.sh-sec h3{font-size:13px;font-weight:600;color:var(--muted);margin:0 0 2px}
+.sh-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.sh-links a,.sh-links button{font:inherit;font-size:14px;text-decoration:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:8px 12px;cursor:pointer}
+.sh-links .yt{background:#C4302B;border-color:#C4302B;color:#fff;font-weight:600}
+.sh-links .again{background:var(--ink);border-color:var(--ink);color:var(--bg);font-weight:600}
+#dice{font:inherit;font-size:20px;width:42px;height:40px;border:1px solid var(--line);background:var(--surface);border-radius:10px;cursor:pointer;line-height:1}
+.statleft{display:flex;gap:8px;align-items:center}
 /* ===== 6. LÁBLÉC ======================================================== */
-.tools{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 10px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+footer details.panel{margin-bottom:14px;font-size:14px;color:var(--ink)}
 .tools button,.tools label{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 10px;cursor:pointer}
 .empty,.error{padding:40px 16px;text-align:center;color:var(--muted)}
 #more{height:1px}
@@ -159,6 +194,17 @@ footer a{color:inherit}
   </div>
   <h1><span data-i="h1"></span><small data-i="sub"></small></h1>
 </header>
+
+<!-- Trendsáv: a hét trendjei az adott ország kínálatából; a szűrőktől független -->
+<section class="trends" id="trends" hidden>
+  <div class="trhead">
+    <h2 data-i="trTitle"></h2>
+    <div class="trsw" role="group" aria-label="Land">
+      <button data-tc="DE">🇩🇪 DE</button><button data-tc="HU">🇭🇺 HU</button>
+    </div>
+  </div>
+  <div class="trrow" id="trRow"></div>
+</section>
 
 <div class="controls">
   <div class="controls-inner">
@@ -236,21 +282,15 @@ footer a{color:inherit}
     <label class="toggle full only-tv"><input type="checkbox" id="newSeason"> <span data-i="newSeason"></span></label>
     <label class="toggle full"><input type="checkbox" id="showGone" checked> <span data-i="showGone"></span></label>
     <label class="toggle full"><input type="checkbox" id="showHidden"> <span data-i="showHidden"></span></label>
-    <!-- Listáim: mentés / betöltés / ajánlások – felül, nem kell a lista végére görgetni -->
-    <details class="panel full" id="myLists">
-      <summary data-i="myLists"></summary>
-      <div class="tools">
-        <button id="exp" data-i="exp"></button>
-        <button id="expRec" data-i="expRec"></button>
-        <label><span data-i="imp"></span><input type="file" id="imp" accept="application/json,.json" hidden></label>
-      </div>
-      <div class="plabel" data-i="seenNote"></div>
-    </details>
   </div>
 </div>
 
 <div class="stats statbar">
-  <button id="resetAll"></button>
+  <div class="statleft">
+    <button id="resetAll"></button>
+    <!-- 🎲 véletlen ajánlás a mostani szűrőkből -->
+    <button id="dice" type="button">🎲</button>
+  </div>
   <!-- hány találat legyen egy oldalon -->
   <select id="pageSize" aria-label="Pro Seite / Oldalanként">
     <option value="10"></option><option value="25"></option><option value="50"></option><option value="100"></option><option value="all"></option>
@@ -263,10 +303,34 @@ footer a{color:inherit}
 <div class="pager" id="pagerBot"></div>
 
 <footer>
+  <!-- Listáim: mentés / betöltés / ajánlások / import – a lábléc elején -->
+  <details class="panel" id="myLists">
+    <summary data-i="myLists"></summary>
+    <div class="tools">
+      <button id="exp" data-i="exp"></button>
+      <button id="expRec" data-i="expRec"></button>
+      <label><span data-i="imp"></span><input type="file" id="imp" accept="application/json,.json" hidden></label>
+    </div>
+    <div class="plabel" data-i="seenNote"></div>
+    <!-- import: IMDb / Letterboxd / Netflix CSV → "Láttam" -->
+    <div class="tools">
+      <label><span data-i="impCsv"></span><input type="file" id="impCsv" accept=".csv,text/csv" hidden></label>
+    </div>
+    <div class="plabel" data-i="impCsvHint"></div>
+  </details>
   <!-- TMDB hivatalos logója (kötelező feltüntetés), kicsiben, a lábléc elején -->
   <a href="https://www.themoviedb.org" rel="noopener"><img class="tmdblogo" alt="TMDB" src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"></a>
   <span data-i="f1"></span> <a href="https://www.themoviedb.org" rel="noopener">TMDB</a> <span data-i="f2"></span> <a href="https://www.omdbapi.com" rel="noopener">OMDb</a>. <span data-i="f3"></span>
 </footer>
+
+<!-- Adatlap: koppintásra felugró ablak (tartalom, szereplők, előzetes) -->
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-bg"></div>
+  <div class="sheet-box" role="dialog" aria-modal="true">
+    <button class="sheet-x" type="button">✕</button>
+    <div id="sheetBody"></div>
+  </div>
+</div>
 
 <script>
 /* ===== 1. SEGÉDESZKÖZÖK ==================================================
@@ -289,6 +353,12 @@ const T = {
   de: {
     h1:"Was schaue ich heute?", sub:"Filme und Serien auf Netflix, Prime Video, Disney+, HBO Max und Apple TV – in Deutschland und Ungarn",
     tabMovie:"Filme", tabTv:"Serien",
+    trTitle:"Trendfilme der Woche", trTitle_tv:"Trendserien der Woche", s_pop:"Gerade beliebt",
+    dice:"Zufallsvorschlag aus den aktuellen Filtern", diceNone:"Nichts Passendes gefunden – lockere die Filter.", diceAgain:"🎲 Noch einer",
+    director:"Regie", creator:"Idee", cast:"Besetzung", overview:"Handlung", trailer:"▶ Trailer", noOverview:"Keine Beschreibung verfügbar.", close:"Schließen", loadingDet:"Wird geladen …",
+    impCsv:"Gesehen aus IMDb / Letterboxd / Netflix importieren (CSV)",
+    impCsvHint:"IMDb: Deine Bewertungen → ⋯ → Exportieren. Letterboxd: Einstellungen → Daten → Export (watched.csv). Netflix: Konto → Profil → Wiedergabeaktivität → Alle herunterladen.",
+    impCsvOk:(a,b,c)=>`${a} Filme und ${b} Serien als gesehen markiert. ${c} Zeilen nicht im Katalog gefunden.`, impCsvBad:"Unbekanntes CSV-Format.",
     ctry_all:"Angebot: beide Länder", ctry_de:"Angebot: Deutschland", ctry_hu:"Angebot: Ungarn", ctry_both:"Nur was in beiden Ländern verfügbar ist",
     showHidden:"Ausgeblendete Filme zeigen", showHidden_tv:"Ausgeblendete Serien zeigen", myLists:"Meine Listen",
     perPage:n=>`${n} pro Seite`, allPage:"Alle auf einmal", prev:"Zurück", next:"Weiter", pageOf:(p,n)=>`Seite ${p} von ${n}`,
@@ -327,6 +397,12 @@ const T = {
   hu: {
     h1:"Mit nézzek ma?", sub:"Filmek és sorozatok a Netflixen, Prime Videón, Disney+-on, HBO Maxon és Apple TV-n – Németországban és Magyarországon",
     tabMovie:"Filmek", tabTv:"Sorozatok",
+    trTitle:"A hét trendi filmjei", trTitle_tv:"A hét trendi sorozatai", s_pop:"Népszerű most",
+    dice:"Véletlen ajánlás a mostani szűrőkből", diceNone:"Nincs megfelelő cím – lazíts a szűrőkön.", diceAgain:"🎲 Másikat",
+    director:"Rendezte", creator:"Alkotó", cast:"Szereplők", overview:"Történet", trailer:"▶ Előzetes", noOverview:"Nincs leírás.", close:"Bezárás", loadingDet:"Betöltés …",
+    impCsv:"Láttam-lista importálása IMDb / Letterboxd / Netflix CSV-ből",
+    impCsvHint:"IMDb: Your Ratings → ⋯ → Export. Letterboxd: Settings → Data → Export (watched.csv). Netflix: Fiók → Profil → Megtekintési tevékenység → Összes letöltése.",
+    impCsvOk:(a,b,c)=>`${a} film és ${b} sorozat bejelölve láttamnak. ${c} sor nem található a katalógusban.`, impCsvBad:"Ismeretlen CSV-formátum.",
     ctry_all:"Kínálat: mindkét ország", ctry_de:"Kínálat: Németország", ctry_hu:"Kínálat: Magyarország", ctry_both:"Csak ami mindkét országban elérhető",
     showHidden:"Elrejtett filmek mutatása", showHidden_tv:"Elrejtett sorozatok mutatása", myLists:"Listáim",
     perPage:n=>`${n} / oldal`, allPage:"Mind egyszerre", prev:"Előző", next:"Következő", pageOf:(p,n)=>`${p}. oldal / ${n}`,
@@ -420,14 +496,15 @@ function applyTexts(){
   $$("#pageSize option").forEach(o => o.textContent = o.value === "all" ? t("allPage") : t("perPage")(o.value));
   $("#pageSize").value = pageSize;
   showDir();
-  fillSort(); fillYears(); fillGenres(); fillChips(); fillSvcBar();
+  $("#dice").title = t("dice"); $("#dice").setAttribute("aria-label", t("dice"));
+  fillSort(); fillYears(); fillGenres(); fillChips(); fillSvcBar(); renderTrends();
 }
 function fillSort(){
   const sel = $("#sort"), val = sel.value;
   const opts = kind === "tv"
-    ? [["combo", t("s_combo")], ["imdb", "IMDb"], ["tmdb", "TMDB"], ["rt", "Rotten Tomatoes"], ["mc", "Metacritic"],
+    ? [["combo", t("s_combo")], ["pop", t("s_pop")], ["imdb", "IMDb"], ["tmdb", "TMDB"], ["rt", "Rotten Tomatoes"], ["mc", "Metacritic"],
        ["newseason", t("s_newseason")], ["year", tk("s_year")], ["added", t("s_added")], ["gone", t("s_gone")], ["title", t("s_title")]]
-    : [["combo", t("s_combo")], ["imdb", "IMDb"], ["rt", "Rotten Tomatoes"], ["mc", "Metacritic"],
+    : [["combo", t("s_combo")], ["pop", t("s_pop")], ["imdb", "IMDb"], ["rt", "Rotten Tomatoes"], ["mc", "Metacritic"],
        ["year", tk("s_year")], ["added", t("s_added")], ["gone", t("s_gone")], ["title", t("s_title")]];
   sel.innerHTML = opts.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join("");
   sel.value = opts.some(o => o[0] === val) ? val : "combo";
@@ -604,6 +681,7 @@ function apply(){
     combo: (a, b) => num(combo(b)) - num(combo(a)) || r(b, "votes") - r(a, "votes"),
     imdb:  (a, b) => r(b, "imdb") - r(a, "imdb") || r(b, "votes") - r(a, "votes"),
     tmdb:  (a, b) => num(tmdbScore(b)) - num(tmdbScore(a)) || (b.tmdb_n || 0) - (a.tmdb_n || 0),
+    pop:   (a, b) => (b.pop || 0) - (a.pop || 0),
     rt:    (a, b) => r(b, "rt") - r(a, "rt") || r(b, "imdb") - r(a, "imdb"),
     mc:    (a, b) => r(b, "mc") - r(a, "mc") || r(b, "imdb") - r(a, "imdb"),
     newseason: (a, b) => ls(b).localeCompare(ls(a)),
@@ -616,7 +694,7 @@ function apply(){
   // "↑" (növekvő) a rendezést fordítja meg; az elérhetők így is elöl maradnak
   // ami nem rendelkezik az adott értékkel (pl. nincs pontszám), mindig a végére kerül
   const val = {combo, imdb: m => m.r && m.r.imdb, tmdb: tmdbScore, rt: m => m.r && m.r.rt, mc: m => m.r && m.r.mc,
-               newseason: m => ls(m) || null, year: m => m.year, added: m => m.added, gone: m => lastGone(m) || null}[sort];
+               pop: m => m.pop || null, newseason: m => ls(m) || null, year: m => m.year, added: m => m.added, gone: m => lastGone(m) || null}[sort];
   const miss = m => val ? val(m) == null : false;
   const c = (a, b) => (miss(a) - miss(b)) || (dir === "asc" ? cmp(b, a) : cmp(a, b));
   view.sort((a, b) => (sort !== "gone" && (b._on - a._on)) || c(a, b));
@@ -696,9 +774,9 @@ function card(m){
   const w = !!seen[m.id], wl = !!watch[m.id], rc = !!(recs[m.id] || recsRemote[kind][m.id]), hd = !!hidden[m.id];
   const ts = kind === "tv" ? tmdbScore(m) : null;
   return `<div class="film${m._on ? "" : " gone"}${w ? " watched" : ""}${hd ? " hid" : ""}" data-id="${m.id}">
-    <a class="pw" href="${link}" target="_blank" rel="noopener">${m.poster ? `<img class="poster" loading="lazy" alt="" src="${IMG}${m.poster}">` : `<div class="poster"></div>`}${w ? `<span class="tick" aria-hidden="true">✓</span>` : ""}</a>
+    <a class="pw" href="${link}" target="_blank" rel="noopener" data-open="${m.id}">${m.poster ? `<img class="poster" loading="lazy" alt="" src="${IMG}${m.poster}">` : `<div class="poster"></div>`}${w ? `<span class="tick" aria-hidden="true">✓</span>` : ""}</a>
     <div>
-      <a class="title" href="${link}" target="_blank" rel="noopener">${esc(ttl(m))}</a>
+      <a class="title" href="${link}" target="_blank" rel="noopener" data-open="${m.id}">${esc(ttl(m))}</a>
       <div class="meta">${meta(m)}</div>
       <div class="flags">${isNew(m) ? `<span class="new">${t("newBadge")}</span>` : ""}${kind === "tv" && isNewSeason(m) ? `<span class="newseason">${t("newSeasonBadge")}</span>` : ""}${rc ? `<span class="recbadge">${t("recBadge")}</span>` : ""}${flag(m, "DE", "🇩🇪")}${flag(m, "HU", "🇭🇺")}${gtags(m)}<button class="seen" aria-pressed="${w}">${w ? "✓ " : ""}${t("seen")}</button><button class="star" aria-pressed="${wl}">${wl ? "★ " : "☆ "}${t("watch")}</button><button class="rec" aria-pressed="${!!recs[m.id]}">${t("rec")}</button></div>
       ${seasonsBlock(m)}
@@ -772,6 +850,9 @@ $("#langChips").parentElement.addEventListener("click", e => {
 $("#resetPicks").addEventListener("click", () => { picks = {lang: {}, country: {}}; store("picks", picks); fillChips(); apply(); });
 // gombok a sorokban: ✕ elrejtés, ⭐ megnézem, 🍽 ajánlom, ✓ láttam
 $("#list").addEventListener("click", e => {
+  // poszter vagy cím: adatlap (új lapon IMDb csak hosszú nyomással / középső gombbal)
+  const op = e.target.closest("[data-open]");
+  if (op && !e.ctrlKey && !e.metaKey) { e.preventDefault(); openSheet(cur().byId[op.dataset.open]); return; }
   const btn = e.target.closest(".hide, .star, .rec, .seen"); if (!btn) return;
   const row = btn.closest(".film"), id = row.dataset.id;
   const name = btn.classList.contains("hide") ? "hidden" : btn.classList.contains("star") ? "watch"
@@ -788,7 +869,7 @@ $("#list").addEventListener("click", e => {
     if (!view.length) $("#list").innerHTML = `<p class="empty">${t("empty")}</p>`;
     return;
   }
-  const m = cur().all.find(x => String(x.id) === id);
+  const m = cur().byId[id];
   if (m) row.outerHTML = card(m);   // csak ezt az egy sort rajzoljuk újra
 });
 // listák mentése fájlba: filmek a gyökérben (régi formátum), sorozatok a "tv" alatt
@@ -818,6 +899,171 @@ function download(name, obj){
   a.download = name; document.body.appendChild(a); a.click(); a.remove();
 }
 
+/* ===== 9b. TRENDSÁV =======================================================
+   A heti trendlista sorrendjében azok a címek, amik a kiválasztott országban
+   most elérhetők (bármelyik szolgáltatónál). A szűrők, a látott és az elrejtett
+   címek nem hatnak rá. */
+let trC = load("trC", null) || (lang === "hu" ? "HU" : "DE");
+function renderTrends(){
+  const d = cur(), box = $("#trends");
+  $$(".trsw button").forEach(b => b.setAttribute("aria-pressed", b.dataset.tc === trC));
+  if (!d) { box.hidden = true; return; }
+  const s = services();
+  const list = d.trending.map(id => d.byId[id])
+    .filter(m => m && Object.values(m.avail[trC] || {}).some(a => a.on)).slice(0, 20);
+  box.hidden = !list.length;
+  $("#trRow").innerHTML = list.map(m => {
+    const r = m.r || {}, c = combo(m);
+    const logos = Object.entries(m.avail[trC]).filter(([, a]) => a.on)
+      .sort((x, y) => SVC_ORDER.indexOf(x[0]) - SVC_ORDER.indexOf(y[0]))
+      .map(([k]) => s[k] && s[k].logo ? `<img alt="${esc(s[k].name)}" src="${LOGO}${s[k].logo}">` : "").join("");
+    return `<button class="trc" data-open="${m.id}">
+      ${m.poster ? `<img class="tp" loading="lazy" alt="" src="https://image.tmdb.org/t/p/w185${m.poster}">` : `<div class="tp"></div>`}
+      <div class="tt">${esc(ttl(m))}</div>
+      <div class="ts">IMDb ${r.imdb != null ? r.imdb.toFixed(1) : "–"} · Ø ${c ?? "–"}</div>
+      <div class="tl">${logos}</div></button>`;
+  }).join("");
+}
+$$(".trsw button").forEach(b => b.addEventListener("click", () => { trC = b.dataset.tc; store("trC", trC); renderTrends(); }));
+$("#trRow").addEventListener("click", e => { const b = e.target.closest("[data-open]"); if (b) openSheet(cur().byId[b.dataset.open]); });
+
+/* ===== 9c. ADATLAP ========================================================
+   Az adatlapok 100 kis fájlban vannak (data/details/<fajta>/00.json … 99.json,
+   az azonosító utolsó két számjegye szerint). Csak a kellő fájlt töltjük le. */
+function loadDetails(k, id){
+  const n = String(+id % 100).padStart(2, "0"), d = D[k];
+  if (!d.det[n]) d.det[n] = fetch(`data/details/${k}/${n}.json`, {cache: "no-cache"}).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+  return d.det[n].then(sh => sh[String(id)] || {});
+}
+let sheetM = null, sheetDice = false;
+function openSheet(m, fromDice = false){
+  if (!m) return;
+  sheetM = m; sheetDice = fromDice;
+  m._on = isAvailable(m);
+  $("#sheet").hidden = false; document.body.style.overflow = "hidden";
+  renderSheet({loading: true});
+  const k = kind;
+  loadDetails(k, m.id).then(x => { if (sheetM === m && kind === k) renderSheet(x); });
+}
+function closeSheet(){ $("#sheet").hidden = true; document.body.style.overflow = ""; sheetM = null; }
+function renderSheet(x){
+  const m = sheetM, r = m.r || {}, {seen, watch, recs} = L[kind];
+  const link = m.imdb_id ? `https://www.imdb.com/title/${m.imdb_id}/` : null;
+  const genres = (m.genres || []).map(id => { const n = cur().genres[id]; return n ? (n[lang] || n.de) : null; }).filter(Boolean);
+  const ov = x.loading ? t("loadingDet") : ((lang === "hu" ? (x.ov_hu || x.ov_de) : (x.ov_de || x.ov_hu)) || t("noOverview"));
+  const ts = kind === "tv" ? tmdbScore(m) : null;
+  const w = !!seen[m.id], wl = !!watch[m.id], rc = !!recs[m.id];
+  $("#sheetBody").innerHTML = `
+    <div class="sh-top" data-id="${m.id}">
+      ${m.poster ? `<img alt="" src="https://image.tmdb.org/t/p/w342${m.poster}">` : `<div class="tp"></div>`}
+      <div>
+        <h2 class="sh-title">${esc(ttl(m))}</h2>
+        <div class="meta">${meta(m)}</div>
+        <div class="flags">${genres.map(g => `<span class="gtag">${esc(g)}</span>`).join("")}</div>
+        <div class="sh-scores"><span>IMDb <b>${r.imdb != null ? r.imdb.toFixed(1) : "–"}</b></span><span>Ø <b>${combo(m) ?? "–"}</b></span>${kind === "tv" ? `<span>TMDB ${ts != null ? ts.toFixed(1) : "–"}</span>` : ""}<span>🍅 ${r.rt != null ? r.rt + "%" : "–"}</span><span>MC ${r.mc ?? "–"}</span></div>
+        <div class="flags">${flag(m, "DE", "🇩🇪")}${flag(m, "HU", "🇭🇺")}</div>
+        <div class="flags"><button class="seen" aria-pressed="${w}">${w ? "✓ " : ""}${t("seen")}</button><button class="star" aria-pressed="${wl}">${wl ? "★ " : "☆ "}${t("watch")}</button><button class="rec" aria-pressed="${rc}">${t("rec")}</button></div>
+      </div>
+    </div>
+    <div class="sh-sec"><h3>${t("overview")}</h3>${esc(ov)}</div>
+    ${x.crew && x.crew.length ? `<div class="sh-sec"><h3>${t(kind === "tv" ? "creator" : "director")}</h3>${esc(x.crew.join(", "))}</div>` : ""}
+    ${x.cast && x.cast.length ? `<div class="sh-sec"><h3>${t("cast")}</h3>${esc(x.cast.join(", "))}</div>` : ""}
+    ${seasonsBlock(m)}
+    <div class="sh-links">
+      ${sheetDice ? `<button class="again" type="button">${t("diceAgain")}</button>` : ""}
+      ${x.yt ? `<a class="yt" href="https://www.youtube.com/watch?v=${esc(x.yt)}" target="_blank" rel="noopener">${t("trailer")}</a>` : ""}
+      ${link ? `<a href="${link}" target="_blank" rel="noopener">IMDb</a>` : ""}
+      <a href="https://www.themoviedb.org/${kind}/${m.id}" target="_blank" rel="noopener">TMDB</a>
+    </div>`;
+  $(".sheet-x").title = t("close"); $(".sheet-x").setAttribute("aria-label", t("close"));
+}
+$(".sheet-bg").addEventListener("click", closeSheet);
+$(".sheet-x").addEventListener("click", closeSheet);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#sheet").hidden) closeSheet(); });
+$("#sheetBody").addEventListener("click", e => {
+  if (e.target.closest(".again")) { rollDice(); return; }
+  const btn = e.target.closest(".star, .rec, .seen"); if (!btn || !sheetM) return;
+  const id = String(sheetM.id), name = btn.classList.contains("star") ? "watch" : btn.classList.contains("rec") ? "recs" : "seen";
+  const obj = L[kind][name];
+  if (obj[id]) delete obj[id]; else obj[id] = today();
+  saveList(kind, name);
+  loadDetails(kind, id).then(renderSheet);
+  const row = $(`#list .film[data-id="${id}"]`); if (row) row.outerHTML = card(sheetM);   // a listában is frissül
+});
+
+/* ===== 9d. 🎲 VÉLETLEN AJÁNLÁS ===========================================
+   A mostani szűrők eredményéből: elérhető, még nem látott, nem elrejtett.
+   Ha van 70-es kombi fölötti, azok közül sorsol, különben bármelyikből. */
+function rollDice(){
+  const {seen, hidden} = L[kind];
+  const pool = view.filter(m => m._on && !seen[m.id] && !hidden[m.id]);
+  const good = pool.filter(m => (combo(m) ?? 0) >= 70);
+  const from = good.length ? good : pool;
+  if (!from.length) { alert(t("diceNone")); return; }
+  let m = from[Math.floor(Math.random() * from.length)];
+  if (from.length > 1 && sheetM && m === sheetM) m = from[(from.indexOf(m) + 1) % from.length];   // ne ugyanazt
+  openSheet(m, true);
+}
+$("#dice").addEventListener("click", rollDice);
+
+/* ===== 9e. IMPORT CSV-BŐL (IMDb / Letterboxd / Netflix) → "Láttam" =========
+   IMDb:       "Const" oszlop (tt-azonosító) – filmek és sorozatok
+   Letterboxd: "Name" + "Year" oszlop – filmek, cím és év alapján
+   Netflix:    "Title" + "Date" oszlop – "Sorozat: Évad: Rész" → sorozat,
+               különben film, cím alapján */
+function parseCSV(text){
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; } else if (c === '"') q = false; else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === ",") { row.push(cell); cell = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim()));
+}
+const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+function titleIndex(k){
+  const idx = {};
+  (D[k] ? D[k].all : []).forEach(m => [m.title, m.title_hu, m.orig].forEach(tl => { const n = norm(tl); if (n) (idx[n] = idx[n] || []).push(m); }));
+  return idx;
+}
+$("#impCsv").addEventListener("change", async e => {
+  const f = e.target.files[0]; if (!f) return;
+  e.target.value = "";
+  await Promise.all(["movie", "tv"].map(k => loadKind(k).catch(() => null)));
+  const rows = parseCSV((await f.text()).replace(/^﻿/, ""));
+  if (rows.length < 2) { alert(t("impCsvBad")); return; }
+  const head = rows[0].map(h => h.trim()), col = n => head.indexOf(n), data = rows.slice(1);
+  const hit = {movie: new Set(), tv: new Set()}; let miss = 0;
+  const mark = (k, m) => { if (m) hit[k].add(String(m.id)); return !!m; };
+  if (col("Const") >= 0) {                               // IMDb
+    const byImdb = {};
+    ["movie", "tv"].forEach(k => (D[k] ? D[k].all : []).forEach(m => { if (m.imdb_id) byImdb[m.imdb_id] = [k, m]; }));
+    data.forEach(r => { const x = byImdb[(r[col("Const")] || "").trim()]; if (!(x && mark(x[0], x[1]))) miss++; });
+  } else if (col("Name") >= 0 && col("Year") >= 0) {      // Letterboxd
+    const idx = titleIndex("movie");
+    data.forEach(r => {
+      const c = idx[norm(r[col("Name")])] || [], y = (r[col("Year")] || "").trim();
+      if (!mark("movie", c.find(m => m.year === y) || (c.length === 1 ? c[0] : null))) miss++;
+    });
+  } else if (col("Title") >= 0) {                        // Netflix
+    const tv = titleIndex("tv"), mv = titleIndex("movie");
+    data.forEach(r => {
+      const full = r[col("Title")] || "", first = full.split(": ")[0];
+      if (full.includes(": ") && (tv[norm(first)] || []).length) mark("tv", tv[norm(first)][0]);
+      else if ((mv[norm(full)] || []).length) mark("movie", mv[norm(full)][0]);
+      else if ((tv[norm(full)] || []).length) mark("tv", tv[norm(full)][0]);
+      else miss++;
+    });
+  } else { alert(t("impCsvBad")); return; }
+  ["movie", "tv"].forEach(k => { hit[k].forEach(id => { if (!L[k].seen[id]) L[k].seen[id] = today(); }); saveList(k, "seen"); });
+  apply();
+  alert(t("impCsvOk")(hit.movie.size, hit.tv.size, miss));
+});
+
 /* ===== 10. ADATOK BETÖLTÉSE ==============================================
    Fajtánként csak az első megnyitáskor töltjük le a fájlt, utána a memóriából
    dolgozunk. A sorozatok fájlja az első v3-futásig még nem létezik. */
@@ -834,6 +1080,9 @@ function loadKind(k){
         services: db.services || {netflix: {name: "Netflix", logo: null}},
         initial: all.map(m => m.added || "").filter(Boolean).sort()[0] || "",
         years: [...new Set(all.map(m => m.year).filter(Boolean))].sort(),
+        byId: Object.fromEntries(all.map(m => [String(m.id), m])),   // gyors keresés azonosító szerint
+        trending: db.trending || [],                                  // heti trendlista (sorrend)
+        det: {},                                                      // betöltött adatlap-fájlok
       };
     });
 }
