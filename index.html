@@ -95,6 +95,14 @@ h1{font-family:var(--display);font-variation-settings:"opsz" 72;font-weight:800;
 .kinds button[aria-pressed=true]{color:var(--ink)}
 .kinds button[aria-pressed=true]::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:var(--accent)}
 
+/* szolgáltató-sáv: 5 gomb egy sorban, logóval; a kikapcsolt szürke és halvány */
+.svcrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(56px,1fr));gap:6px}
+.svc{display:flex;flex-direction:column;align-items:center;gap:4px;border:1px solid var(--line);background:none;border-radius:var(--r-m);padding:8px 2px 6px;font-size:11.5px;line-height:1.15;font-weight:600;color:var(--muted);cursor:pointer;text-align:center;transition:background-color .2s var(--ease),border-color .2s var(--ease),color .2s var(--ease),transform .16s var(--ease)}
+.svc:active{transform:scale(.96)}
+.svc img{width:30px;height:30px;border-radius:7px;filter:grayscale(1);opacity:.4;transition:filter .2s var(--ease),opacity .2s var(--ease)}
+.svc[aria-pressed=true]{background:var(--surface);border-color:var(--ink);color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.svc[aria-pressed=true] img{filter:none;opacity:1}
+
 /* ===== 5. TREND-POLC (nagy helyezés-számok a plakátok mögött) =========== */
 .shelf{padding-block:18px 4px}
 .shead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
@@ -312,6 +320,8 @@ footer details.panel[open]>summary::after{transform:rotate(-135deg)}
   <div class="kinds" role="group" aria-label="Filme / Serien">
     <button data-k="movie" data-i="tabMovie"></button><button data-k="tv" data-i="tabTv"></button>
   </div>
+  <!-- szolgáltatók: a fő szűrő – a lista ÉS a trendek is ehhez igazodnak -->
+  <div class="svcrow" id="svcBar" role="group"></div>
 </header>
 
 <!-- Trend-polc: a hét trendjei az adott ország kínálatából; a szűrőktől független -->
@@ -384,7 +394,6 @@ footer details.panel[open]>summary::after{transform:rotate(-135deg)}
         <option value="HU" data-c="c_hu"></option><option value="BOTH" data-c="c_both"></option>
       </select>
       <div class="opts" data-sel="country"></div></div>
-    <div class="grp"><h3 data-i="g_svc"></h3><div class="opts" id="svcBar" role="group"></div></div>
     <div class="grp"><h3 data-i="g_genre"></h3>
       <select id="genre" hidden></select><div class="opts" data-sel="genre"></div></div>
     <div class="grp"><h3 data-i="g_year"></h3>
@@ -519,7 +528,7 @@ const T = {
     g_dir:"Richtung", g_page:"Pro Seite", dirDown:"↓ Absteigend", dirUp:"↑ Aufsteigend", emptyLast:"Einträge ohne Wert stehen immer am Ende.",
     c_all:"Beide Länder", c_de:"Deutschland", c_hu:"Ungarn", c_both:"Nur was in beiden verfügbar ist",
     ch_new:"Neu (7 Tage)", ch_season:"Neue Staffel", ch_noGone:"Ohne nicht mehr verfügbare", ch_hidden:"Mit ausgeblendeten", ch_asc:"Aufsteigend sortiert",
-    ch_only:"Nur", ch_not:"Nicht", svcN:(a,b)=>`${a} von ${b} Diensten`, ySince:y=>`ab ${y}`, yUntil:y=>`bis ${y}`,
+    ch_only:"Nur", ch_not:"Nicht", ySince:y=>`ab ${y}`, yUntil:y=>`bis ${y}`,
     chipDel:l=>`Filter „${l}“ entfernen`, sortBy:l=>`Sortiert nach: ${l}.`,
     th_auto:"Auto", th_light:"Hell", th_dark:"Dunkel", themeT:n=>`Darstellung: ${n}. Tippen zum Wechseln.`,
     th_name:{auto:"automatisch (wie das Gerät)", light:"hell", dark:"dunkel"}, sortOpen:"Sortierung und Seitengröße", ovLangT:"Sprache der Handlung",
@@ -573,7 +582,7 @@ const T = {
     g_dir:"Irány", g_page:"Oldalanként", dirDown:"↓ Csökkenő", dirUp:"↑ Növekvő", emptyLast:"Az érték nélküli címek mindig a végére kerülnek.",
     c_all:"Mindkét ország", c_de:"Németország", c_hu:"Magyarország", c_both:"Csak ami mindkettőben",
     ch_new:"Új (7 nap)", ch_season:"Friss évad", ch_noGone:"Nem elérhetők nélkül", ch_hidden:"Elrejtettekkel", ch_asc:"Növekvő sorrend",
-    ch_only:"Csak", ch_not:"Nem", svcN:(a,b)=>`${a} / ${b} szolgáltató`, ySince:y=>`${y} óta`, yUntil:y=>`${y}-ig`,
+    ch_only:"Csak", ch_not:"Nem", ySince:y=>`${y} óta`, yUntil:y=>`${y}-ig`,
     chipDel:l=>`„${l}” szűrő törlése`, sortBy:l=>`Rendezés: ${l.toLowerCase()}.`,
     th_auto:"Auto", th_light:"Nappal", th_dark:"Éjjel", themeT:n=>`Megjelenés: ${n}. Koppints a váltáshoz.`,
     th_name:{auto:"automatikus (mint a telefon)", light:"nappali", dark:"éjszakai"}, sortOpen:"Rendezés és oldalméret", ovLangT:"A leírás nyelve",
@@ -705,7 +714,8 @@ function fillGenres(){
 function fillSvcBar(){
   const s = services();
   $("#svcBar").innerHTML = svcKeys().map(k =>
-    `<button class="opt svc" type="button" data-svc="${k}" aria-pressed="${svcSel(k)}">${s[k].logo ? `<img alt="" src="${LOGO}${s[k].logo}">` : ""}${esc(s[k].name || k)}</button>`).join("");
+    `<button class="svc" type="button" data-svc="${k}" aria-pressed="${svcSel(k)}">${s[k].logo ? `<img alt="" src="${LOGO}${s[k].logo}">` : ""}${esc(s[k].name || k)}</button>`).join("");
+  $("#svcBar").setAttribute("aria-label", t("g_svc"));
 }
 /* A szűrőpanel gombsorai (.opts[data-sel]) a rejtett legördülőkből készülnek:
    ugyanazok az értékek, csak koppintható gombként. */
@@ -767,8 +777,6 @@ function restoreFilters(){
 function activeChips(){
   const out = [], optText = id => { const s = $(id), o = s.options[s.selectedIndex]; return o ? o.textContent : ""; };
   if (country !== "ALL") out.push({l: t({DE: "c_de", HU: "c_hu", BOTH: "c_both"}[country]), clear: () => { country = "ALL"; $("#country").value = "ALL"; }});
-  const keys = svcKeys(), on = keys.filter(svcSel);
-  if (on.length < keys.length) out.push({l: t("svcN")(on.length, keys.length), clear: () => { svcOn = {}; store("svcOn", svcOn); fillSvcBar(); }});
   if ($("#genre").value) out.push({l: optText("#genre"), clear: () => $("#genre").value = ""});
   const yf = $("#yFrom").value, yt = $("#yTo").value;
   if (yf || yt) out.push({l: yf && yt ? `${yf}–${yt}` : yf ? t("ySince")(yf) : t("yUntil")(yt), clear: () => { $("#yFrom").value = ""; $("#yTo").value = ""; }});
@@ -790,7 +798,7 @@ function resetAll(){
   CTRL.forEach(id => $(id).value = DEFAULTS[id] ?? "");
   SWITCH.forEach(id => $(id).checked = DEFAULTS[id]);
   picks = {lang: {}, country: {}}; store("picks", picks); fillChips();
-  svcOn = {}; store("svcOn", svcOn); fillSvcBar();
+  // a szolgáltatók (fenti sáv = előfizetéseid) maradnak, azokat a „Mind törlése” nem bántja
   saveFilters(); apply();
 }
 
@@ -1083,7 +1091,7 @@ $("#svcBar").addEventListener("click", e => {
   const k = b.dataset.svc;
   // az utolsó bekapcsolt szolgáltatót nem lehet kikapcsolni (különben üres lenne a lista)
   if (svcSel(k) && svcKeys().filter(svcSel).length === 1) { alert(t("svcLast")); return; }
-  svcOn[k] = !svcSel(k); store("svcOn", svcOn); fillSvcBar(); apply();
+  svcOn[k] = !svcSel(k); store("svcOn", svcOn); fillSvcBar(); apply(); renderTrends();
 });
 // nyelv/ország panel
 $("#picksGrp").addEventListener("click", e => {
@@ -1162,8 +1170,8 @@ function download(name, obj){
 
 /* ===== 9b. TREND-POLC =====================================================
    A heti trendlista sorrendjében azok a címek, amik a kiválasztott országban
-   most elérhetők (bármelyik szolgáltatónál). A szűrők, a látott és az elrejtett
-   címek nem hatnak rá. Nagy szám = helyezés; koppintásra alatta nyílik le
+   most elérhetők egy BEKAPCSOLT szolgáltatódnál (a fenti sáv szerint). A többi
+   szűrő, a látott és az elrejtett címek nem hatnak rá. Nagy szám = helyezés; koppintásra alatta nyílik le
    az adatlap (plakát nélkül, mert az fölötte már látszik). */
 let trC = load("trC", null) || (lang === "hu" ? "HU" : "DE");
 const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1172,7 +1180,7 @@ function renderTrends(){
   $$(".trsw button").forEach(b => b.setAttribute("aria-pressed", b.dataset.tc === trC));
   if (!d) { box.hidden = true; return; }
   const list = d.trending.map(id => d.byId[id])
-    .filter(m => m && Object.values(m.avail[trC] || {}).some(a => a.on)).slice(0, 20);
+    .filter(m => m && Object.entries(m.avail[trC] || {}).some(([k, a]) => svcSel(k) && a.on)).slice(0, 20);
   box.hidden = !list.length;
   // a nyitott trend-adatlap marad, ha a cím még a sorban van; különben becsukódik
   if (trOpen && (trOpen.k !== kind || !list.some(m => String(m.id) === trOpen.id))) closeTr();
