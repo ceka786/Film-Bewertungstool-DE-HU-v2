@@ -29,7 +29,8 @@ RATING_MAX_AGE_DAYS = 45      # ennyi nap után frissítjük újra egy értékel
 TV_DETAIL_MAX_AGE_DAYS = 7    # futó sorozat adatlapját (évadok!) ennyi naponként frissítjük
 DETAIL_DIR = "data/details"   # az adatlapok (tartalom, szereplők, előzetes) külön fájlokban
 SHARDS = 100                  # ...100 kis fájlra bontva, hogy a weboldal csak a kellőt töltse le
-DETAIL_BACKFILL = 6000        # régi tételeknél futásonként legfeljebb ennyi adatlapot pótolunk
+DETAIL_BACKFILL = 15000       # régi tételeknél futásonként legfeljebb ennyi adatlapot pótolunk
+                              # (a TMDB-nek nincs napi limitje; 15 000 kb. 45 perc)
 TRENDING_PAGES = 10           # heti trendlista: 10 oldal × 20 = 200 cím
 REGIONS = ["DE", "HU"]        # országkódok: Németország, Magyarország
 TODAY = date.today().isoformat()  # mai dátum "2026-09-26" formában
@@ -334,7 +335,14 @@ def update_details(kind, cfg, db):
     # régi tételek, amiknek még nincs adatlapja (szereplők stb.): futásonként legfeljebb
     # DETAIL_BACKFILL darabot pótolunk, hogy egy futás ne tartson túl sokáig
     known = {id(e) for e in todo}
-    backfill = [e for e in items.values() if id(e) not in known and "cast" not in det.get(str(e["id"]), {})]
+    # pótolni kell: nincs még adatlapja, VAGY se magyar, se német leírása nincs, és a
+    # tartalék (pl. angol) leírást még nem néztük meg ("ov_x" mező hiányzik)
+    def needs(x):
+        return "cast" not in x or (not x.get("ov_hu") and not x.get("ov_de") and "ov_x" not in x)
+    backfill = [e for e in items.values() if id(e) not in known and needs(det.get(str(e["id"]), {}))]
+    # sorrend: először a heti trendek (a trendlista sorrendjében), utána a legnépszerűbbek
+    rank = {mid: i for i, mid in enumerate(db.get("trending") or [])}
+    backfill.sort(key=lambda e: (rank.get(str(e["id"]), len(rank)), -(e.get("pop") or 0)))
     print(f"{cfg['label']}: részletek lekérése {len(todo)} tételhez"
           f" + {min(len(backfill), DETAIL_BACKFILL)} adatlap pótlása (hátra még: {max(0, len(backfill) - DETAIL_BACKFILL)}) …")
     todo += backfill[:DETAIL_BACKFILL]
@@ -342,7 +350,7 @@ def update_details(kind, cfg, db):
         try:
             # append_to_response: több lekérés egyben (adatlap + külső azonosítók + szereplők + videók)
             d = tmdb(f"/{cfg['tmdb']}/{e['id']}", language="hu-HU",
-                     append_to_response="external_ids,credits,videos", include_video_language="hu,de,en")
+                     append_to_response="external_ids,credits,videos,translations", include_video_language="hu,de,en")
             store_details(kind, det.setdefault(str(e["id"]), {}), d)
             e["title_hu"] = d.get(cfg["title"]) or e.get("orig")
             pc = d.get("production_countries") or []
@@ -372,6 +380,25 @@ def store_details(kind, x, d):
     """Az adatlaphoz szükséges adatok: magyar tartalom, 6 főszereplő,
     rendező (filmnél) / alkotó (sorozatnál), előzetes (YouTube-azonosító)."""
     x["ov_hu"] = d.get("overview") or None
+    # fordítások: minden nyelv leírása (ugyanabban a lekérésben jön, nem kell külön hívás)
+    tr = {}
+    for t in (d.get("translations") or {}).get("translations") or []:
+        ov = ((t.get("data") or {}).get("overview") or "").strip()
+        if ov and t.get("iso_639_1") not in tr:
+            tr[t.get("iso_639_1")] = ov
+    if not x.get("ov_de") and tr.get("de"):
+        x["ov_de"] = tr["de"]
+    # tartalék leírás, ha se magyarul, se németül nincs: angol, különben az eredeti
+    # nyelv, különben bármelyik. "ov_x" = a szöveg, "ov_xl" = a nyelv kódja.
+    # Üres "ov_x" = megnéztük, egyik nyelven sincs leírás (így nem kérdezzük újra).
+    x.pop("ov_x", None); x.pop("ov_xl", None)
+    if not x["ov_hu"] and not x.get("ov_de"):
+        for code in ["en", d.get("original_language")] + list(tr):
+            if code and tr.get(code):
+                x["ov_x"], x["ov_xl"] = tr[code], code
+                break
+        else:
+            x["ov_x"] = ""
     credits = d.get("credits") or {}
     x["cast"] = [c["name"] for c in (credits.get("cast") or [])[:6]]
     if kind == "movie":
@@ -462,9 +489,9 @@ def main():
     for kind, cfg in KINDS.items():
         print(f"===== {cfg['label']} =====")
         update_availability(kind, cfg, dbs[kind])
+        update_trending(cfg, dbs[kind])     # előbb a trendek, hogy az adatlapok ezekkel kezdjenek
         update_details(kind, cfg, dbs[kind])
         update_genres(cfg, dbs[kind])
-        update_trending(cfg, dbs[kind])
     print("===== Értékelések =====")
     update_ratings(dbs)
     for kind, cfg in KINDS.items():

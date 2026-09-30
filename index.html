@@ -199,6 +199,7 @@ details.seasons[open] summary::after{transform:translateY(1px) rotate(-135deg)}
 /* adatlap-részek (lista, trend, kocka) */
 .sh-sec{font-size:15px;line-height:1.5}
 .sh-sec h3{font-size:12px;font-weight:700;color:var(--muted);margin:0}
+.sh-sec .ovl{font-weight:400}
 .sh-title{font-family:var(--display);font-size:22px;font-weight:800;line-height:1.1;margin:0;text-wrap:balance}
 .trdet .sh-title{margin-right:40px}
 .sh-top{display:grid;grid-template-columns:100px 1fr;gap:14px}
@@ -517,7 +518,7 @@ const T = {
     ch_only:"Nur", ch_not:"Nicht", svcN:(a,b)=>`${a} von ${b} Diensten`, ySince:y=>`ab ${y}`, yUntil:y=>`bis ${y}`,
     chipDel:l=>`Filter „${l}“ entfernen`, sortBy:l=>`Sortiert nach: ${l}.`,
     th_auto:"Auto", th_light:"Hell", th_dark:"Dunkel", themeT:n=>`Darstellung: ${n}. Tippen zum Wechseln.`,
-    th_name:{auto:"automatisch (wie das Gerät)", light:"hell", dark:"dunkel"}, sortOpen:"Sortierung und Seitengröße",
+    th_name:{auto:"automatisch (wie das Gerät)", light:"hell", dark:"dunkel"}, sortOpen:"Sortierung und Seitengröße", ovIn:l=>`(auf ${l})`,
     locale:"de-DE" },
   hu: {
     h1:"Mit nézzek ma?", sub:"Filmek és sorozatok a Netflixen, Prime Videón, Disney+-on, HBO Maxon és Apple TV-n, Németországban és Magyarországon.",
@@ -571,7 +572,7 @@ const T = {
     ch_only:"Csak", ch_not:"Nem", svcN:(a,b)=>`${a} / ${b} szolgáltató`, ySince:y=>`${y} óta`, yUntil:y=>`${y}-ig`,
     chipDel:l=>`„${l}” szűrő törlése`, sortBy:l=>`Rendezés: ${l.toLowerCase()}.`,
     th_auto:"Auto", th_light:"Nappal", th_dark:"Éjjel", themeT:n=>`Megjelenés: ${n}. Koppints a váltáshoz.`,
-    th_name:{auto:"automatikus (mint a telefon)", light:"nappali", dark:"éjszakai"}, sortOpen:"Rendezés és oldalméret",
+    th_name:{auto:"automatikus (mint a telefon)", light:"nappali", dark:"éjszakai"}, sortOpen:"Rendezés és oldalméret", ovIn:l=>`(${l} nyelvű)`,
     locale:"hu-HU" }
 };
 
@@ -1260,10 +1261,18 @@ function detHead(m, poster = true){
   if (!poster) return info;
   return `<div class="sh-top" data-id="${m.id}">${m.poster ? `<img alt="" src="https://image.tmdb.org/t/p/w342${m.poster}">` : `<div class="tp"></div>`}${info}</div>`;
 }
+/* Történet: a választott nyelven; ha nincs, a másikon (HU/DE); ha egyiken sincs,
+   a tartalék (angol vagy az eredeti nyelv). Ha nem a választott nyelven jön,
+   kis megjegyzés mutatja, milyen nyelvű. */
 function detBody(m, x){
-  const ov = x.loading ? t("loadingDet") : ((lang === "hu" ? (x.ov_hu || x.ov_de) : (x.ov_de || x.ov_hu)) || t("noOverview"));
+  let ov = t("loadingDet"), ol = null;
+  if (!x.loading) {
+    const opts = lang === "hu" ? [["hu", x.ov_hu], ["de", x.ov_de]] : [["de", x.ov_de], ["hu", x.ov_hu]];
+    const hit = opts.concat([[x.ov_xl, x.ov_x]]).find(([c, v]) => v);
+    if (hit) { ov = hit[1]; if (hit[0] !== lang) ol = hit[0]; } else ov = t("noOverview");
+  }
   return `
-    <div class="sh-sec"><h3>${t("overview")}</h3>${esc(ov)}</div>
+    <div class="sh-sec"><h3>${t("overview")}${ol ? ` <span class="ovl">${esc(t("ovIn")(dn("language", ol)))}</span>` : ""}</h3>${esc(ov)}</div>
     ${x.crew && x.crew.length ? `<div class="sh-sec"><h3>${t(kind === "tv" ? "creator" : "director")}</h3>${esc(x.crew.join(", "))}</div>` : ""}
     ${x.cast && x.cast.length ? `<div class="sh-sec"><h3>${t("cast")}</h3>${esc(x.cast.join(", "))}</div>` : ""}`;
 }
