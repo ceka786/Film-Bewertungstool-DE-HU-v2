@@ -54,10 +54,20 @@ input[type=search],select{width:100%;font:inherit;font-size:16px;color:var(--ink
 .kinds button[aria-pressed=true]{color:var(--ink);border-bottom-color:var(--ink)}
 /* a fül szerint eltűnő elemek */
 body[data-kind=tv] .only-movie, body[data-kind=movie] .only-tv{display:none}
-.seg{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
-.seg button{font:inherit;font-size:15px;border:0;border-radius:7px;padding:8px 0;background:none;color:var(--ink);cursor:pointer}
-.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg);font-weight:600}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+/* rendezés + irány-gomb egy cellában */
+.sortrow{display:grid;grid-template-columns:1fr auto;gap:6px}
+#dir{font:inherit;font-size:18px;width:44px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;cursor:pointer}
+/* számláló-sor: szűrők törlése + találat/oldal */
+.statbar{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.statbar select{width:auto;padding:8px 10px;font-size:14px}
+/* lapozó a lista fölött és alatt */
+.pager{max-width:760px;margin:0 auto;padding:8px 16px;display:flex;gap:10px;align-items:center;justify-content:center;color:var(--muted);font-size:14px}
+.pager:empty{display:none}
+.pager button{font:inherit;font-size:18px;min-width:44px;padding:6px 10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;cursor:pointer}
+.pager button:disabled{opacity:.35;cursor:default}
+/* elrejtett, de a kapcsolóval megjelenített sor */
+.film.hid{opacity:.5}
 .toggle{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--muted)}
 .toggle input{width:20px;height:20px;accent-color:var(--ink)}
 :focus-visible{outline:3px solid var(--lamp);outline-offset:2px}
@@ -158,22 +168,24 @@ footer a{color:inherit}
       <button data-k="tv" data-i="tabTv"></button>
     </div>
     <input class="full" type="search" id="q" data-i-ph="search">
-    <div class="seg full" role="group" aria-label="Land">
-      <button data-c="ALL" aria-pressed="true" data-i="all"></button>
-      <button data-c="DE" aria-pressed="false">🇩🇪 DE</button>
-      <button data-c="HU" aria-pressed="false">🇭🇺 HU</button>
-      <button data-c="BOTH" aria-pressed="false" data-i="both"></button>
-    </div>
+    <!-- Kínálat: melyik ország streaming-műsora számít (NEM a nyelv és NEM a szinkron) -->
+    <select id="country" class="full" aria-label="Angebot / Kínálat">
+      <option value="ALL" data-i="ctry_all"></option>
+      <option value="DE" data-i="ctry_de"></option>
+      <option value="HU" data-i="ctry_hu"></option>
+      <option value="BOTH" data-i="ctry_both"></option>
+    </select>
     <div class="svcbar full" id="svcBar" role="group" aria-label="Streaming"></div>
-    <div class="row2">
+    <div class="sortrow full">
       <select id="sort" aria-label="Sortierung"></select>
-      <select id="votes" aria-label="Mindestanzahl IMDb-Stimmen">
+      <button id="dir" type="button">↓</button>
+    </div>
+    <select id="votes" class="full" aria-label="Mindestanzahl IMDb-Stimmen">
         <option value="0" data-i="v0"></option>
         <option value="1000"></option>
         <option value="10000"></option>
         <option value="100000"></option>
       </select>
-    </div>
     <div class="row2">
       <select id="yFrom" aria-label="Jahr von"></select>
       <select id="yTo" aria-label="Jahr bis"></select>
@@ -219,26 +231,38 @@ footer a{color:inherit}
       <option value="all" data-i="l_all"></option>
       <option value="watch" data-i="l_watch"></option>
       <option value="rec" data-i="l_rec"></option>
-      <option value="hidden" data-i="l_hidden"></option>
     </select>
     <label class="toggle full"><input type="checkbox" id="onlyNew"> <span data-i="onlyNew"></span></label>
     <label class="toggle full only-tv"><input type="checkbox" id="newSeason"> <span data-i="newSeason"></span></label>
     <label class="toggle full"><input type="checkbox" id="showGone" checked> <span data-i="showGone"></span></label>
+    <label class="toggle full"><input type="checkbox" id="showHidden"> <span data-i="showHidden"></span></label>
+    <!-- Listáim: mentés / betöltés / ajánlások – felül, nem kell a lista végére görgetni -->
+    <details class="panel full" id="myLists">
+      <summary data-i="myLists"></summary>
+      <div class="tools">
+        <button id="exp" data-i="exp"></button>
+        <button id="expRec" data-i="expRec"></button>
+        <label><span data-i="imp"></span><input type="file" id="imp" accept="application/json,.json" hidden></label>
+      </div>
+      <div class="plabel" data-i="seenNote"></div>
+    </details>
   </div>
 </div>
 
-<div class="stats"><button id="resetAll"></button></div>
+<div class="stats statbar">
+  <button id="resetAll"></button>
+  <!-- hány találat legyen egy oldalon -->
+  <select id="pageSize" aria-label="Pro Seite / Oldalanként">
+    <option value="10"></option><option value="25"></option><option value="50"></option><option value="100"></option><option value="all"></option>
+  </select>
+</div>
 <p class="stats" id="stats"></p>
+<div class="pager" id="pagerTop"></div>
 <main id="list"></main>
 <div id="more"></div>
+<div class="pager" id="pagerBot"></div>
 
 <footer>
-  <div class="tools">
-    <button id="exp" data-i="exp"></button>
-    <button id="expRec" data-i="expRec"></button>
-    <label><span data-i="imp"></span><input type="file" id="imp" accept="application/json,.json" hidden></label>
-  </div>
-  <p data-i="seenNote"></p>
   <!-- TMDB hivatalos logója (kötelező feltüntetés), kicsiben, a lábléc elején -->
   <a href="https://www.themoviedb.org" rel="noopener"><img class="tmdblogo" alt="TMDB" src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"></a>
   <span data-i="f1"></span> <a href="https://www.themoviedb.org" rel="noopener">TMDB</a> <span data-i="f2"></span> <a href="https://www.omdbapi.com" rel="noopener">OMDb</a>. <span data-i="f3"></span>
@@ -265,6 +289,10 @@ const T = {
   de: {
     h1:"Was schaue ich heute?", sub:"Filme und Serien auf Netflix, Prime Video, Disney+ und HBO Max – in Deutschland und Ungarn",
     tabMovie:"Filme", tabTv:"Serien",
+    ctry_all:"Angebot: beide Länder", ctry_de:"Angebot: Deutschland", ctry_hu:"Angebot: Ungarn", ctry_both:"Nur was in beiden Ländern verfügbar ist",
+    showHidden:"Ausgeblendete Filme zeigen", showHidden_tv:"Ausgeblendete Serien zeigen", myLists:"Meine Listen",
+    perPage:n=>`${n} pro Seite`, allPage:"Alle auf einmal", prev:"Zurück", next:"Weiter", pageOf:(p,n)=>`Seite ${p} von ${n}`,
+    dirDesc:"Absteigend – tippen zum Umkehren", dirAsc:"Aufsteigend – tippen zum Umkehren",
     search:"Titel suchen", all:"Alle", both:"Beide", svcLast:"Mindestens ein Dienst muss ausgewählt bleiben.",
     s_combo:"Kombi-Score", s_year:"Neueste Filme", s_year_tv:"Neueste Serien", s_newseason:"Neueste Staffel",
     s_added:"Neu im Katalog", s_gone:"Zuletzt entfernt", s_title:"Titel A–Z",
@@ -299,6 +327,10 @@ const T = {
   hu: {
     h1:"Mit nézzek ma?", sub:"Filmek és sorozatok a Netflixen, Prime Videón, Disney+-on és HBO Maxon – Németországban és Magyarországon",
     tabMovie:"Filmek", tabTv:"Sorozatok",
+    ctry_all:"Kínálat: mindkét ország", ctry_de:"Kínálat: Németország", ctry_hu:"Kínálat: Magyarország", ctry_both:"Csak ami mindkét országban elérhető",
+    showHidden:"Elrejtett filmek mutatása", showHidden_tv:"Elrejtett sorozatok mutatása", myLists:"Listáim",
+    perPage:n=>`${n} / oldal`, allPage:"Mind egyszerre", prev:"Előző", next:"Következő", pageOf:(p,n)=>`${p}. oldal / ${n}`,
+    dirDesc:"Csökkenő – koppints a megfordításhoz", dirAsc:"Növekvő – koppints a megfordításhoz",
     search:"Keresés cím alapján", all:"Mind", both:"Mindkettő", svcLast:"Legalább egy szolgáltatónak kiválasztva kell maradnia.",
     s_combo:"Kombi pontszám", s_year:"Legújabb filmek", s_year_tv:"Legújabb sorozatok", s_newseason:"Legfrissebb évad",
     s_added:"Új a katalógusban", s_gone:"Nemrég eltávolítva", s_title:"Cím A–Z",
@@ -356,7 +388,9 @@ let recsRemote = {movie: {}, tv: {}};  // a repóban lévő ajanlasok.json – m
 let picks = load("picks"); picks.lang = picks.lang || {}; picks.country = picks.country || {};
 let svcOn = load("svcOn");             // melyik szolgáltató van bekapcsolva (hiányzó = be)
 let country = "ALL", view = [], shown = 0;
-const PAGE = 60;
+const PAGE = 60;                       // "Mind egyszerre" módban ennyi sor töltődik be görgetésenként
+let pageSize = load("pageSize", "50");  // találat oldalanként (alap: 50), minden fülre közös
+let page = 0, dir = "desc";             // aktuális oldal; rendezés iránya (fülenként mentve)
 const IMG = "https://image.tmdb.org/t/p/w154", LOGO = "https://image.tmdb.org/t/p/w92";
 const SVC_ORDER = ["netflix", "prime", "disney", "hbo"];
 
@@ -383,6 +417,9 @@ function applyTexts(){
   $$(".kinds button").forEach(b => b.setAttribute("aria-pressed", b.dataset.k === kind));
   document.body.dataset.kind = kind;
   document.title = t("h1");
+  $$("#pageSize option").forEach(o => o.textContent = o.value === "all" ? t("allPage") : t("perPage")(o.value));
+  $("#pageSize").value = pageSize;
+  showDir();
   fillSort(); fillYears(); fillGenres(); fillChips(); fillSvcBar();
 }
 function fillSort(){
@@ -447,18 +484,18 @@ function passPicks(m){
 /* ===== 5. SZŰRŐK MENTÉSE FÜLENKÉNT ======================================
    A filmek és a sorozatok szűrői külön mentődnek ("filters" és "tv_filters"). */
 const CTRL = ["#sort","#votes","#seenFilter","#listFilter","#yFrom","#yTo","#genre","#runtime","#seasons","#status"];
-const SWITCH = ["#onlyNew","#newSeason","#showGone"];
-const DEFAULTS = {"#sort":"combo","#votes":"0","#seenFilter":"all","#listFilter":"all","#onlyNew":false,"#newSeason":false,"#showGone":true};
+const SWITCH = ["#onlyNew","#newSeason","#showGone","#showHidden"];
+const DEFAULTS = {"#sort":"combo","#votes":"0","#seenFilter":"all","#listFilter":"all","#onlyNew":false,"#newSeason":false,"#showGone":true,"#showHidden":false};
 function saveFilters(){
-  const f = {country};
+  const f = {country, dir};
   CTRL.forEach(id => f[id] = $(id).value);
   SWITCH.forEach(id => f[id] = $(id).checked);
   store(KINDS[kind].pre + "filters", f);
 }
 function restoreFilters(){
   const f = load(KINDS[kind].pre + "filters");
-  country = f.country || "ALL";
-  $$(".seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.c === country));
+  country = f.country || "ALL"; $("#country").value = country;
+  dir = f.dir === "asc" ? "asc" : "desc"; showDir();
   CTRL.forEach(id => { const v = f[id] ?? DEFAULTS[id] ?? ""; $(id).value = v; if ($(id).value !== v) $(id).value = DEFAULTS[id] ?? ""; });
   SWITCH.forEach(id => $(id).checked = f[id] ?? DEFAULTS[id]);
 }
@@ -467,13 +504,13 @@ function activeFilters(){
   let n = (country !== "ALL") + !!$("#q").value.trim() + svcKeys().some(k => !svcSel(k));
   const ids = ["#votes","#seenFilter","#listFilter","#yFrom","#yTo","#genre"].concat(kind === "tv" ? ["#seasons","#status"] : ["#runtime"]);
   ids.forEach(id => { const v = $(id).value; if (v && v !== "all" && v !== "0") n++; });
-  n += $("#onlyNew").checked + (kind === "tv" && $("#newSeason").checked) + !$("#showGone").checked;
+  n += $("#onlyNew").checked + (kind === "tv" && $("#newSeason").checked) + !$("#showGone").checked + $("#showHidden").checked + (dir === "asc");
   n += Object.values(picks.lang).filter(Boolean).length + Object.values(picks.country).filter(Boolean).length;
   return n;
 }
 function resetAll(){
-  country = "ALL"; $("#q").value = "";
-  $$(".seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.c === "ALL"));
+  country = "ALL"; $("#country").value = "ALL"; $("#q").value = "";
+  dir = "desc"; showDir();
   CTRL.forEach(id => $(id).value = DEFAULTS[id] ?? "");
   SWITCH.forEach(id => $(id).checked = DEFAULTS[id]);
   picks = {lang: {}, country: {}}; store("picks", picks); fillChips();
@@ -534,6 +571,7 @@ function apply(){
   const yf = $("#yFrom").value, yt = $("#yTo").value, g = $("#genre").value;
   const lf = $("#listFilter").value, sf = $("#seenFilter").value;
   const rtv = $("#runtime").value, sev = $("#seasons").value, stv = $("#status").value;
+  const showHidden = $("#showHidden").checked;
   const onlyNew = $("#onlyNew").checked, newSeason = kind === "tv" && $("#newSeason").checked;
 
   view = d.all.filter(m => {
@@ -550,7 +588,7 @@ function apply(){
     if (kind === "tv" && stv && m.status !== stv) return false;
     if (onlyNew && !isNew(m)) return false;
     if (newSeason && !isNewSeason(m)) return false;
-    if (lf === "hidden" ? !hidden[m.id] : hidden[m.id]) return false;   // elrejtés
+    if (hidden[m.id] && !showHidden) return false;   // elrejtés: csak a kapcsolóval látszik
     if (lf === "watch" && !watch[m.id]) return false;
     if (lf === "rec" && !(recs[m.id] || rRemote[m.id])) return false;
     if (sf === "yes" && !seen[m.id]) return false;
@@ -575,11 +613,37 @@ function apply(){
     title: (a, b) => ttl(a).localeCompare(ttl(b), lang),
   }[sort] || (() => 0);
   // az elérhetők előre, kivéve a "Nemrég eltávolítva" rendezésnél
-  view.sort((a, b) => (sort !== "gone" && (b._on - a._on)) || cmp(a, b));
+  // "↑" (növekvő) a rendezést fordítja meg; az elérhetők így is elöl maradnak
+  // ami nem rendelkezik az adott értékkel (pl. nincs pontszám), mindig a végére kerül
+  const val = {combo, imdb: m => m.r && m.r.imdb, tmdb: tmdbScore, rt: m => m.r && m.r.rt, mc: m => m.r && m.r.mc,
+               newseason: m => ls(m) || null, year: m => m.year, added: m => m.added, gone: m => lastGone(m) || null}[sort];
+  const miss = m => val ? val(m) == null : false;
+  const c = (a, b) => (miss(a) - miss(b)) || (dir === "asc" ? cmp(b, a) : cmp(a, b));
+  view.sort((a, b) => (sort !== "gone" && (b._on - a._on)) || c(a, b));
 
   updateStats();
+  page = 0; render();
+}
+/* ===== 7b. MEGJELENÍTÉS OLDALANKÉNT ======================================
+   pageSize = 10/25/50/100 → egyszerre egy oldal, lapozóval
+   pageSize = "all"        → minden, görgetésre töltődik (a telefon miatt adagokban) */
+function render(){
+  shown = 0;
   $("#list").innerHTML = view.length ? "" : `<p class="empty">${t("empty")}</p>`;
-  shown = 0; renderMore();
+  if (pageSize === "all") { $("#pagerTop").innerHTML = $("#pagerBot").innerHTML = ""; renderMore(); return; }
+  const size = +pageSize, pages = Math.max(1, Math.ceil(view.length / size));
+  page = Math.min(page, pages - 1);
+  $("#list").insertAdjacentHTML("beforeend", view.slice(page * size, (page + 1) * size).map(card).join(""));
+  shown = view.length;   // a görgetéses betöltés ilyenkor ne tegyen hozzá semmit
+  const html = pages > 1
+    ? `<button data-p="-1" aria-label="${t("prev")}" ${page === 0 ? "disabled" : ""}>‹</button><span>${t("pageOf")(page + 1, pages)}</span><button data-p="1" aria-label="${t("next")}" ${page >= pages - 1 ? "disabled" : ""}>›</button>`
+    : "";
+  $("#pagerTop").innerHTML = $("#pagerBot").innerHTML = html;
+}
+function showDir(){
+  $("#dir").textContent = dir === "asc" ? "↑" : "↓";
+  $("#dir").title = t(dir === "asc" ? "dirAsc" : "dirDesc");
+  $("#dir").setAttribute("aria-label", $("#dir").title);
 }
 function updateStats(){
   const d = cur();
@@ -631,7 +695,7 @@ function card(m){
   const link = m.imdb_id ? `https://www.imdb.com/title/${m.imdb_id}/` : `https://www.themoviedb.org/${kind}/${m.id}`;
   const w = !!seen[m.id], wl = !!watch[m.id], rc = !!(recs[m.id] || recsRemote[kind][m.id]), hd = !!hidden[m.id];
   const ts = kind === "tv" ? tmdbScore(m) : null;
-  return `<div class="film${m._on ? "" : " gone"}${w ? " watched" : ""}" data-id="${m.id}">
+  return `<div class="film${m._on ? "" : " gone"}${w ? " watched" : ""}${hd ? " hid" : ""}" data-id="${m.id}">
     <a class="pw" href="${link}" target="_blank" rel="noopener">${m.poster ? `<img class="poster" loading="lazy" alt="" src="${IMG}${m.poster}">` : `<div class="poster"></div>`}${w ? `<span class="tick" aria-hidden="true">✓</span>` : ""}</a>
     <div>
       <a class="title" href="${link}" target="_blank" rel="noopener">${esc(ttl(m))}</a>
@@ -673,10 +737,16 @@ $$(".lang button").forEach(b => b.addEventListener("click", () => {
   applyTexts(); apply();
 }));
 // ország
-$$(".seg button").forEach(b => b.addEventListener("click", () => {
-  country = b.dataset.c; saveFilters();
-  $$(".seg button").forEach(x => x.setAttribute("aria-pressed", x === b));
-  apply(); window.scrollTo({top: 0});
+$("#country").addEventListener("change", () => { country = $("#country").value; saveFilters(); apply(); });
+// rendezés iránya
+$("#dir").addEventListener("click", () => { dir = dir === "asc" ? "desc" : "asc"; showDir(); saveFilters(); apply(); });
+// találat oldalanként
+$("#pageSize").addEventListener("change", () => { pageSize = $("#pageSize").value; store("pageSize", pageSize); page = 0; render(); });
+// lapozás: a lista tetejére ugrik
+[$("#pagerTop"), $("#pagerBot")].forEach(el => el.addEventListener("click", e => {
+  const b = e.target.closest("button[data-p]"); if (!b || b.disabled) return;
+  page += +b.dataset.p; render();
+  $(".statbar").scrollIntoView({behavior: "smooth"});
 }));
 // keresés (kis késleltetéssel, hogy ne minden betűnél számoljon)
 let qTimer; $("#q").addEventListener("input", () => { clearTimeout(qTimer); qTimer = setTimeout(apply, 150); });
@@ -709,9 +779,10 @@ $("#list").addEventListener("click", e => {
   const obj = L[kind][name];
   if (obj[id]) delete obj[id]; else obj[id] = today();
   saveList(kind, name);
-  if (name === "hidden") {
+  if (name === "hidden" && !$("#showHidden").checked) {
     // a sor kikerül az aktuális nézetből; nem rajzoljuk újra az egészet,
-    // így a lista nem ugrik vissza a tetejére
+    // így a lista nem ugrik vissza a tetejére (ha az elrejtettek látszanak,
+    // a sor marad, csak halványabb lesz – lent újrarajzoljuk)
     view = view.filter(m => String(m.id) !== id); shown = Math.max(0, shown - 1);
     row.remove(); updateStats();
     if (!view.length) $("#list").innerHTML = `<p class="empty">${t("empty")}</p>`;
