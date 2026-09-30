@@ -3,7 +3,7 @@
 STREAMING-KATALÓGUS DE/HU – adatgyűjtő szkript (v3: filmek + sorozatok)
 =======================================================================
 Mit csinál? Megkérdezi a TMDB-t, mely filmek és sorozatok futnak a német és
-a magyar Netflixen, Prime Videón, Disney+-on és HBO Maxon, majd az OMDb-től
+a magyar Netflixen, Prime Videón, Disney+-on, HBO Maxon és Apple TV-n, majd az OMDb-től
 elkéri az értékeléseket. Két fájlba ír:
   data/movies.json  – filmek
   data/series.json  – sorozatok
@@ -60,6 +60,10 @@ SERVICES = {
     "prime":   ("Prime Video", lambda n: n.startswith("amazon prime video")),
     "disney":  ("Disney+",     lambda n: n.startswith("disney plus") or n.startswith("disney+")),
     "hbo":     ("HBO Max",     lambda n: n.startswith("hbo max") or n == "max"),
+    # Apple TV (korábban Apple TV+). A TMDB-nél az "Apple TV" bolt-bejegyzés is
+    # létezhet (kölcsönzés/vásárlás) – az nem zavar, mert csak az előfizetéses
+    # (flatrate) tartalmat kérjük le.
+    "apple":   ("Apple TV",    lambda n: n.startswith("apple tv") and "store" not in n),
 }
 
 
@@ -100,9 +104,11 @@ def resolve_services(region, tmdb_kind):
             if match(name):
                 s = out.setdefault(key, {"ids": [], "logo": None, "len": 999})
                 s["ids"].append(p["provider_id"])
-                # logónak a legrövidebb nevű bejegyzését vesszük (az a "fő" csomag)
-                if len(name) < s["len"]:
-                    s["len"], s["logo"] = len(name), p.get("logo_path")
+                # logónak a legrövidebb nevű bejegyzését vesszük (az a "fő" csomag);
+                # az Apple-nél a "plus" nevűt, mert az az előfizetéses szolgáltatás
+                score = len(name) - (100 if "plus" in name and key == "apple" else 0)
+                if score < s["len"]:
+                    s["len"], s["logo"] = score, p.get("logo_path")
     for s in out.values():
         s.pop("len")
     return out

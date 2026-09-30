@@ -77,8 +77,8 @@ body[data-kind=tv] .only-movie, body[data-kind=movie] .only-tv{display:none}
 .stats{max-width:760px;margin:0 auto;padding:10px 16px 0;color:var(--muted);font-size:14px}
 main{max-width:760px;margin:0 auto;padding:6px 8px 40px}
 /* szolgáltató-kapcsolók a szűrősávban */
-.svcbar{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-.svc{font:inherit;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:4px;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:10px;padding:7px 2px;cursor:pointer}
+.svcbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(62px,1fr));gap:6px}
+.svc{font:inherit;font-size:12px;line-height:1.15;text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:10px;padding:7px 2px;cursor:pointer}
 .svc img{width:28px;height:28px;border-radius:6px;filter:grayscale(1);opacity:.45}
 .svc[aria-pressed=true]{border:2px solid var(--ink);color:var(--ink);font-weight:600;padding:6px 1px}
 .svc[aria-pressed=true] img{filter:none;opacity:1}
@@ -287,7 +287,7 @@ const daysAgo = n => new Date(Date.now() - n*864e5).toISOString().slice(0,10);
    Ha egy kulcsnak van "_tv" változata, a Sorozatok fülön az jelenik meg. */
 const T = {
   de: {
-    h1:"Was schaue ich heute?", sub:"Filme und Serien auf Netflix, Prime Video, Disney+ und HBO Max – in Deutschland und Ungarn",
+    h1:"Was schaue ich heute?", sub:"Filme und Serien auf Netflix, Prime Video, Disney+, HBO Max und Apple TV – in Deutschland und Ungarn",
     tabMovie:"Filme", tabTv:"Serien",
     ctry_all:"Angebot: beide Länder", ctry_de:"Angebot: Deutschland", ctry_hu:"Angebot: Ungarn", ctry_both:"Nur was in beiden Ländern verfügbar ist",
     showHidden:"Ausgeblendete Filme zeigen", showHidden_tv:"Ausgeblendete Serien zeigen", myLists:"Meine Listen",
@@ -325,7 +325,7 @@ const T = {
     f1:"Daten:", f2:"(Verfügbarkeit via JustWatch) und", f3:"Dieses Projekt wird nicht von TMDB unterstützt oder zertifiziert.",
     locale:"de-DE" },
   hu: {
-    h1:"Mit nézzek ma?", sub:"Filmek és sorozatok a Netflixen, Prime Videón, Disney+-on és HBO Maxon – Németországban és Magyarországon",
+    h1:"Mit nézzek ma?", sub:"Filmek és sorozatok a Netflixen, Prime Videón, Disney+-on, HBO Maxon és Apple TV-n – Németországban és Magyarországon",
     tabMovie:"Filmek", tabTv:"Sorozatok",
     ctry_all:"Kínálat: mindkét ország", ctry_de:"Kínálat: Németország", ctry_hu:"Kínálat: Magyarország", ctry_both:"Csak ami mindkét országban elérhető",
     showHidden:"Elrejtett filmek mutatása", showHidden_tv:"Elrejtett sorozatok mutatása", myLists:"Listáim",
@@ -392,7 +392,7 @@ const PAGE = 60;                       // "Mind egyszerre" módban ennyi sor tö
 let pageSize = load("pageSize", "50");  // találat oldalanként (alap: 50), minden fülre közös
 let page = 0, dir = "desc";             // aktuális oldal; rendezés iránya (fülenként mentve)
 const IMG = "https://image.tmdb.org/t/p/w154", LOGO = "https://image.tmdb.org/t/p/w92";
-const SVC_ORDER = ["netflix", "prime", "disney", "hbo"];
+const SVC_ORDER = ["netflix", "prime", "disney", "hbo", "apple"];
 
 /* Szövegek: tk() a fülhöz illő változatot adja (pl. "Filme" vagy "Serien") */
 const t = k => T[lang][k];
