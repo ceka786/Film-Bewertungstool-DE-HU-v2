@@ -41,7 +41,7 @@
   --bg:#F5F3F6; --surface:#FFFFFF; --raised:#ECE7EE; --ink:#1C1520; --muted:#665B6A; --line:#DDD5E0;
   --accent:#E8A11A; --accent-ink:#231500; --hi:#F2B233; --hi-ink:#231500;
   --ok:#1E8A55; --no:#C23B30; --rec:#6A4BC4; --season:#17798A;
-  --rank-fill:transparent; --rank-stroke:#1C1520;
+  --rank-fill:var(--bg); --rank-stroke:#1C1520;
   --scrim:rgba(28,21,32,.42); --lift:0 6px 18px rgba(28,21,32,.16);
   --display:"Bricolage Grotesque",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
   --body:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
@@ -103,7 +103,10 @@ h1{font-family:var(--display);font-variation-settings:"opsz" 72;font-weight:800;
 .svc[aria-pressed=true]{background:var(--surface);border-color:var(--ink);color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
 .svc[aria-pressed=true] img{filter:none;opacity:1}
 
-/* ===== 5. TREND-POLC (nagy helyezés-számok a plakátok mögött) =========== */
+/* ===== 5. TREND-POLC (nagy helyezés-számok a plakátok mögött) ===========
+   Nappal körvonalas szám: a belseje háttérszínnel kitöltve, a kitöltés a körvonal
+   FÖLÖTT (paint-order) – így a betű egymásba lógó részeinek belső vonalai (pl. a 4-esben)
+   nem látszanak. Ezért 4 px a körvonal: a fele látszik. Éjjel teli borostyán szám. */
 .shelf{padding-block:18px 4px}
 .shead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
 .shead h2{font-family:var(--display);font-size:20px;font-weight:800;margin:0}
@@ -114,7 +117,7 @@ h1{font-family:var(--display);font-variation-settings:"opsz" 72;font-weight:800;
 .trrow::-webkit-scrollbar{display:none}
 .trc{flex:0 0 auto;display:grid;grid-template-columns:auto 96px;align-items:end;scroll-snap-align:start;border:0;background:none;padding:0;cursor:pointer;text-align:left;transition:transform .16s var(--ease)}
 .trc:active{transform:scale(.97)}
-.rank{font-family:var(--display);font-variation-settings:"opsz" 96;font-weight:800;font-size:92px;line-height:.78;letter-spacing:.02em;margin-right:4px;color:var(--rank-fill);-webkit-text-stroke:2px var(--rank-stroke);font-variant-numeric:lining-nums}
+.rank{font-family:var(--display);font-variation-settings:"opsz" 96;font-weight:800;font-size:92px;line-height:.78;letter-spacing:.02em;margin-right:-6px;color:var(--rank-fill);-webkit-text-stroke:4px var(--rank-stroke);paint-order:stroke fill;font-variant-numeric:lining-nums}
 .trc .tp{width:96px;aspect-ratio:2/3;height:auto;border-radius:var(--r-m);object-fit:cover;display:block;background:var(--raised);position:relative;box-shadow:var(--lift)}
 .trc[aria-expanded=true] .tp{outline:3px solid var(--accent);outline-offset:3px}
 .trdet{margin-top:8px;background:var(--surface);border-radius:var(--r-l);padding:16px;box-shadow:0 0 0 1px var(--line);display:grid;gap:10px;position:relative}
