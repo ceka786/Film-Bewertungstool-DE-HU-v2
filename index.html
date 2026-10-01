@@ -542,7 +542,7 @@ const T = {
     ch_only:"Nur", ch_not:"Nicht", ySince:y=>`ab ${y}`, yUntil:y=>`bis ${y}`,
     chipDel:l=>`Filter „${l}“ entfernen`, sortBy:l=>`Sortiert nach: ${l}.`,
     regionT:"Streaming-Region", reg_HU:"Ungarn", reg_DE:"Deutschland", regLast:"Mindestens ein Land muss ausgewählt bleiben.",
-    otherLangs:"Weitere Sprachen", otherLangsEach:"Weitere Sprachen einzeln", defaultsB:"Standard",
+    standup:"Stand-up", otherLangs:"Weitere Sprachen", otherLangsEach:"Weitere Sprachen einzeln", defaultsB:"Standard",
     th_auto:"Auto", th_light:"Hell", th_dark:"Dunkel", themeT:n=>`Darstellung: ${n}. Tippen zum Wechseln.`,
     th_name:{auto:"automatisch (wie das Gerät)", light:"hell", dark:"dunkel"}, sortOpen:"Sortierung und Seitengröße", ovLangT:"Sprache der Handlung",
     locale:"de-DE" },
@@ -596,7 +596,7 @@ const T = {
     ch_only:"Csak", ch_not:"Nem", ySince:y=>`${y} óta`, yUntil:y=>`${y}-ig`,
     chipDel:l=>`„${l}” szűrő törlése`, sortBy:l=>`Rendezés: ${l.toLowerCase()}.`,
     regionT:"Streaming-régió", reg_HU:"Magyarország", reg_DE:"Németország", regLast:"Legalább egy országnak bekapcsolva kell maradnia.",
-    otherLangs:"Egyéb nyelvek", otherLangsEach:"Egyéb nyelvek egyenként", defaultsB:"Alapértelmezett",
+    standup:"Stand-up", otherLangs:"Egyéb nyelvek", otherLangsEach:"Egyéb nyelvek egyenként", defaultsB:"Alapértelmezett",
     th_auto:"Auto", th_light:"Nappal", th_dark:"Éjjel", themeT:n=>`Megjelenés: ${n}. Koppints a váltáshoz.`,
     th_name:{auto:"automatikus (mint a telefon)", light:"nappali", dark:"éjszakai"}, sortOpen:"Rendezés és oldalméret", ovLangT:"A leírás nyelve",
     locale:"hu-HU" }
@@ -747,7 +747,8 @@ function fillYears(){
 function fillGenres(){
   const g = cur() ? cur().genres : {}, gp = gpicks[kind];
   const list = Object.entries(g).map(([id, n]) => [id, n[lang] || n.de || id]).sort((a, b) => a[1].localeCompare(b[1], lang));
-  $("#genreChips").innerHTML = list.map(([id, n]) =>
+  // a végén a „Stand-up”: a TMDB-ben nem műfaj, hanem kulcsszó (az update.py jelöli: m.su)
+  $("#genreChips").innerHTML = list.concat([["su", t("standup")]]).map(([id, n]) =>
     `<button class="opt tri" type="button" data-g="${id}" data-s="${gp[id] || 0}">${esc(n)}</button>`).join("");
   $("#genreAll").setAttribute("aria-pressed", !Object.values(gp).some(Boolean));
 }
@@ -804,7 +805,7 @@ function passPicks(m){
   if (v && p[v] === 2) return false;
   if (Object.values(p).some(s => s === 1) && !(v && p[v] === 1)) return false;
   // műfaj: ✗ bármelyik → kimarad; ha van ✓, legalább EGY ✓ műfaja legyen (bármelyik)
-  const gp = gpicks[kind], gs = m.genres || [];
+  const gp = gpicks[kind], gs = m.su ? (m.genres || []).concat("su") : (m.genres || []);
   if (gs.some(id => gp[id] === 2)) return false;
   if (Object.values(gp).some(s => s === 1) && !gs.some(id => gp[id] === 1)) return false;
   return true;
@@ -839,8 +840,8 @@ function restoreFilters(){
 function activeChips(){
   const out = [], optText = id => { const s = $(id), o = s.options[s.selectedIndex]; return o ? o.textContent : ""; };
   const gn = cur() ? cur().genres : {};
-  for (const [id, st] of Object.entries(gpicks[kind])) if (st && gn[id])
-    out.push({l: `${t(st === 1 ? "ch_only" : "ch_not")}: ${gn[id][lang] || gn[id].de}`, clear: () => { delete gpicks[kind][id]; store("gpicks", gpicks); fillGenres(); }});
+  for (const [id, st] of Object.entries(gpicks[kind])) if (st && (gn[id] || id === "su"))
+    out.push({l: `${t(st === 1 ? "ch_only" : "ch_not")}: ${id === "su" ? t("standup") : gn[id][lang] || gn[id].de}`, clear: () => { delete gpicks[kind][id]; store("gpicks", gpicks); fillGenres(); }});
   const yf = $("#yFrom").value, yt = $("#yTo").value;
   if (yf || yt) out.push({l: yf && yt ? `${yf}–${yt}` : yf ? t("ySince")(yf) : t("yUntil")(yt), clear: () => { $("#yFrom").value = ""; $("#yTo").value = ""; }});
   (kind === "tv" ? ["#seasons", "#status"] : ["#runtime"]).forEach(id => { if ($(id).value) out.push({l: optText(id), clear: () => $(id).value = ""}); });

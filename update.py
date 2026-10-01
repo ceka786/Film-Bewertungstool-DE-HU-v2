@@ -31,6 +31,7 @@ DETAIL_DIR = "data/details"   # az adatlapok (tartalom, szereplők, előzetes) k
 SHARDS = 100                  # ...100 kis fájlra bontva, hogy a weboldal csak a kellőt töltse le
 DETAIL_BACKFILL = 15000       # régi tételeknél futásonként legfeljebb ennyi adatlapot pótolunk
                               # (a TMDB-nek nincs napi limitje; 15 000 kb. 45 perc)
+STANDUP_KW = {9716, 267509}  # TMDB-kulcsszavak: "stand-up comedy", "stand-up" (a fellépés-felvételek)
 TRENDING_PAGES = 10           # heti trendlista: 10 oldal × 20 = 200 cím
 REGIONS = ["DE", "HU"]        # országkódok: Németország, Magyarország
 TODAY = date.today().isoformat()  # mai dátum "2026-09-26" formában
@@ -339,7 +340,9 @@ def update_details(kind, cfg, db):
     # ("ov_en" mező hiányzik – ez a v10 előtti adatlapoknál egyszer fordul elő)
     def needs(x):
         return "cast" not in x or "ov_en" not in x
-    backfill = [e for e in items.values() if id(e) not in known and needs(det.get(str(e["id"]), {}))]
+    # ...vagy még nem néztük meg, stand-up-e ("su" mező hiányzik – v14 előtti tételek)
+    backfill = [e for e in items.values() if id(e) not in known
+                and (needs(det.get(str(e["id"]), {})) or "su" not in e)]
     # sorrend: először a heti trendek (a trendlista sorrendjében), utána a legnépszerűbbek
     rank = {mid: i for i, mid in enumerate(db.get("trending") or [])}
     backfill.sort(key=lambda e: (rank.get(str(e["id"]), len(rank)), -(e.get("pop") or 0)))
@@ -350,8 +353,12 @@ def update_details(kind, cfg, db):
         try:
             # append_to_response: több lekérés egyben (adatlap + külső azonosítók + szereplők + videók)
             d = tmdb(f"/{cfg['tmdb']}/{e['id']}", language="hu-HU",
-                     append_to_response="external_ids,credits,videos,translations", include_video_language="hu,de,en")
+                     append_to_response="external_ids,credits,videos,translations,keywords", include_video_language="hu,de,en")
             store_details(kind, det.setdefault(str(e["id"]), {}), d)
+            # stand-up felvétel? (a TMDB-ben nincs ilyen műfaj, csak kulcsszó; filmnél
+            # "keywords", sorozatnál "results" a lista neve) – 1 = igen, 0 = nem
+            kw = d.get("keywords") or {}
+            e["su"] = int(any(k.get("id") in STANDUP_KW for k in (kw.get("keywords") or kw.get("results") or [])))
             e["title_hu"] = d.get(cfg["title"]) or e.get("orig")
             pc = d.get("production_countries") or []
             # fő ország: elsőként az origin_country, ha nincs, az első gyártó ország
