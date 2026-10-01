@@ -426,7 +426,7 @@ footer details.panel[open]>summary::after{transform:rotate(-135deg)}
       </select><div class="opts" data-sel="status"></div></div>
     <div class="grp"><h3 data-i="g_votes"></h3>
       <select id="votes" hidden>
-        <option value="0" data-c="all"></option><option value="1000"></option><option value="10000"></option><option value="100000"></option>
+        <option value="0" data-c="all"></option><option value="1000"></option><option value="10000"></option><option value="50000"></option><option value="100000"></option>
       </select><div class="opts" data-sel="votes"></div></div>
     <div class="grp" id="picksGrp"><h3><span data-i="panelTitle"></span><span id="picksCount"></span></h3>
       <p class="hint" data-i="panelHint"></p>
@@ -639,8 +639,8 @@ let gpicks = load("gpicks", {movie: {}, tv: {}}); gpicks.movie = gpicks.movie ||
    A kínai (zh) gomb a kantonit (cn) is jelenti. */
 const MAIN_LANG = ["en", "de", "fr", "es", "sv", "it", "ja", "zh", "pl", "pt", "ko", "hu"];
 /* Az „Alapértelmezett” beállítás (és új látogatónál ez az indulás):
-   min. 10 000 szavazat, 1990-től, egyéb nyelvek ✗, India ✗ */
-const PRESET = {"#votes": "10000", "#yFrom": "1990"};
+   min. 50 000 szavazat (v15 előtt 10 000), 1990-től, egyéb nyelvek ✗, India ✗ */
+const PRESET = {"#votes": "50000", "#yFrom": "1990"};
 const PRESET_PICKS = {lang: {_other: 2}, country: {IN: 2}};
 (function presetOnce(){
   if (load("preset13", false)) return;
@@ -651,6 +651,16 @@ const PRESET_PICKS = {lang: {_other: 2}, country: {IN: 2}};
   }
   picks.lang = {...picks.lang, ...PRESET_PICKS.lang}; picks.country = {...picks.country, ...PRESET_PICKS.country};
   store("picks", picks); store("gpicks", gpicks); store("region", region); store("preset13", true);
+})();
+/* v15: az alap szavazatszám 10 000 → 50 000. Ahol még a régi alapérték (10 000) áll,
+   ott egyszer átállítjuk; amit kézzel másra állítottál, az marad. */
+(function preset15(){
+  if (load("preset15", false)) return;
+  for (const k of ["movie", "tv"]) {
+    const f = load(KINDS[k].pre + "filters");
+    if (f["#votes"] === "10000") { f["#votes"] = "50000"; store(KINDS[k].pre + "filters", f); }
+  }
+  store("preset15", true);
 })();
 const PAGE = 60;                       // "Mind egyszerre" módban ennyi sor töltődik be görgetésenként
 let pageSize = load("pageSize", "50");  // találat oldalanként (alap: 50), minden fülre közös
